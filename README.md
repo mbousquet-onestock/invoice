@@ -28,7 +28,7 @@ navigateur (iframe OneStock)             Vercel
 
 ## Paramètres
 
-Accessibles via le bouton discret « Paramètres » en bas à gauche (à côté de « Envoyer la facture »). Le système de fichiers Vercel n'étant pas persistant, les paramètres sont enregistrés dans le navigateur
+Accessibles via le bouton « Paramètres », masqué juste à gauche de « Envoyer la facture » (il apparaît au survol). Le système de fichiers Vercel n'étant pas persistant, les paramètres sont enregistrés dans le navigateur
 (localStorage) et envoyés avec chaque appel :
 
 - **API OneStock** : token, ou identifiant / mot de passe (token obtenu par `POST /login` et mis en cache), version,

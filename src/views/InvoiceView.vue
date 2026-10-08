@@ -97,7 +97,7 @@ watch(
       v-if="!configured"
       type="warning"
       title="Connexion OneStock non configurée"
-      subtitle="Renseignez le token ou les identifiants API via « Paramètres », en bas de page."
+      subtitle="Renseignez le token ou les identifiants API via le bouton masqué à gauche de « Envoyer la facture »."
     />
 
     <OsAlert
@@ -188,8 +188,8 @@ watch(
   font-family: Roboto, sans-serif;
 }
 .textarea textarea:focus { border-color: #24bdb0; }
-.actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-/* Discreet entry to the settings: barely visible until hovered or focused. */
-.settings-link { opacity: 0.25; transition: opacity 0.2s; }
+.actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
+/* Hidden entry to the settings, just left of "Envoyer": invisible until hovered or focused. */
+.settings-link { opacity: 0; transition: opacity 0.2s; }
 .settings-link:hover, .settings-link:focus-visible { opacity: 1; }
 </style>
