@@ -53,13 +53,40 @@ export async function loadSettings(context: OnestockContext) {
     const params = new URLSearchParams(
       Object.entries(requestContext(context)).filter(([, v]) => v) as [string, string][],
     );
-    const data = await parse(await fetch(`/api/settings?${params}`));
-    store.scope = data.scope;
-    store.settings = data.settings;
-    store.created = data.created || [];
-    store.loaded = true;
+    applySettings(await parse(await fetch(`/api/settings?${params}`)));
   } catch (err) {
     store.error = (err as Error).message;
+  } finally {
+    store.loading = false;
+  }
+}
+
+function applySettings(data: { scope: SettingsScope; settings: SettingsMap; created?: string[] }) {
+  store.scope = data.scope;
+  store.settings = data.settings;
+  store.created = data.created || [];
+  store.loaded = true;
+}
+
+/**
+ * Opening of the screen, in one call: settings (initialised on the first connection) and the order of the context.
+ */
+export async function initApp<T>(context: OnestockContext): Promise<{ order: T | null; order_error: string | null }> {
+  store.loading = true;
+  store.error = '';
+  try {
+    const data = await parse(
+      await fetch('/api/init', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ context: { ...requestContext(context), order_id: context.orderId } }),
+      }),
+    );
+    applySettings(data);
+    return { order: data.order, order_error: data.order_error };
+  } catch (err) {
+    store.error = (err as Error).message;
+    return { order: null, order_error: null };
   } finally {
     store.loading = false;
   }

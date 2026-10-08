@@ -14,7 +14,8 @@ Conformément à la demande, **la signature de l'extension n'est pas vérifiée*
 
 ```
 navigateur (iframe OneStock)             Vercel
- └─ Vue 3 + design system OneStock ─▶ api/onestock-proxy.js ─▶ API OneStock
+ └─ Vue 3 + design system OneStock ─▶ api/init.js           ─▶ API Settings + API OneStock (ouverture de l'écran)
+                                      api/onestock-proxy.js ─▶ API OneStock
                                       api/send-invoice.js    ─▶ API OneStock + téléchargement facture + SMTP
                                       api/test-smtp.js       ─▶ SMTP
                                       api/settings.js        ─▶ API Settings (lecture / écriture des paramètres)
@@ -24,6 +25,11 @@ navigateur (iframe OneStock)             Vercel
   `{ method, path, body, site_id, api_url }`. Le proxy ajoute `site_id` et le token, et utilise
   `POST` + `X-HTTP-Method-Override: GET` pour les routes GET à body.
 - Les identifiants OneStock et SMTP sont lus par les fonctions dans l'API Settings (voir ci-dessous).
+- À l'ouverture, un seul appel `POST /api/init` lit les paramètres (une fois), les initialise si besoin et charge la
+  commande.
+- Performances : l'API Settings est lue avec un appel par site (ce site, `""`, `*`) et par environnement, et les
+  lectures des appels de travail sont mises en cache 30 s dans l'instance (`SETTINGS_CACHE_TTL_MS`, `0` pour
+  désactiver). L'écran Paramètres et le test SMTP lisent toujours des valeurs fraîches ; toute écriture vide le cache.
 - `api/send-invoice` relit la commande côté serveur : seules les factures de la commande peuvent être envoyées.
 - L'URL de l'API est, par ordre de priorité : `onestock_api_root`, celle reçue du contexte (`api_url`),
   sinon `https://{site_id}.api.qualif.onestock-retail.com` (ou `api.onestock-retail.com` en production).
@@ -74,6 +80,7 @@ valeur revient encore chiffrée (ou si l'API ne peut pas déchiffrer), elle est 
 | `SETTINGS_API_URL` | Par défaut `https://extensions-lemon.vercel.app/api/settings` |
 | `EXTENSION_ID` | `extension_id` utilisé hors contexte OneStock (défaut `invoice`) |
 | `SETTINGS_ENVIRONMENT` | Environnement par défaut sans `api_url` (défaut `qualif`) |
+| `SETTINGS_CACHE_TTL_MS` | Durée du cache des paramètres en ms (défaut `30000`, `0` = sans cache) |
 
 Côté application Extensions, `SETTINGS_API_KEYS` et `SETTINGS_ENCRYPTION_KEY` doivent être définies (sinon 503 /
 `encryption_key_missing`). En local, mettre ces variables dans `.env.local` (voir `.env.example`).

@@ -2,8 +2,8 @@
 import { computed, ref, watch } from 'vue';
 import { OsAlert, OsBadge, OsButton, OsCardLayout, OsCheckbox, OsDivider, OsInputText, OsTextBlock } from '#ds';
 import type { OnestockContext } from '../composables/useOnestockContext';
-import { fetchOrder, renderTemplate, sendInvoice, type OrderSummary } from '../api';
-import { store, loadSettings, isConfigured, setting } from '../settings';
+import { renderTemplate, sendInvoice, type OrderSummary } from '../api';
+import { store, initApp, isConfigured, setting } from '../settings';
 
 const props = defineProps<{ context: OnestockContext }>();
 const emit = defineEmits<{ close: []; openSettings: [] }>();
@@ -35,22 +35,25 @@ function formatDate(timestamp?: number) {
   return timestamp ? new Date(timestamp * 1000).toLocaleString(props.context.lang || 'fr') : '';
 }
 
+function show(result: OrderSummary) {
+  order.value = result;
+  selected.value = Object.fromEntries(result.invoices.map((url) => [url, true]));
+  to.value = result.billing.email;
+  const vars = { order_id: result.id, ...result.billing };
+  subject.value = renderTemplate(setting('email_subject'), vars);
+  body.value = renderTemplate(setting('email_body'), vars);
+}
+
+/** One call to /api/init: settings and order together. */
 async function load() {
   error.value = '';
   sent.value = '';
   order.value = null;
-  if (!props.context.orderId || !siteId.value) return;
   loading.value = true;
   try {
-    const result = await fetchOrder(props.context);
-    order.value = result;
-    selected.value = Object.fromEntries(result.invoices.map((url) => [url, true]));
-    to.value = result.billing.email;
-    const vars = { order_id: result.id, ...result.billing };
-    subject.value = renderTemplate(setting('email_subject'), vars);
-    body.value = renderTemplate(setting('email_body'), vars);
-  } catch (err) {
-    error.value = (err as Error).message;
+    const result = await initApp<OrderSummary>(props.context);
+    if (result.order) show(result.order);
+    else if (result.order_error) error.value = result.order_error;
   } finally {
     loading.value = false;
   }
@@ -77,14 +80,11 @@ async function send() {
   }
 }
 
-// In the back office the context arrives with the handshake, after the first render:
-// settings are read for that site / extension / environment, then the order is loaded.
+// In the back office the context arrives with the handshake, after the first render.
 watch(
   () => [props.context.ready, props.context.orderId, props.context.siteId, props.context.extensionId] as const,
-  async ([ready]) => {
-    if (!ready) return;
-    if (!store.loaded) await loadSettings(props.context);
-    if (configured.value) load();
+  ([ready]) => {
+    if (ready) load();
   },
   { immediate: true },
 );
@@ -108,7 +108,6 @@ watch(
     />
     <OsAlert v-else-if="context.ready && !siteId" type="warning" title="Site ID manquant dans le contexte" />
     <OsAlert v-if="!context.ready" type="neutral" subtitle="Chargement du contexte OneStock…" />
-    <OsAlert v-else-if="store.loading" type="neutral" subtitle="Chargement des paramètres…" />
     <OsAlert v-else-if="loading" type="neutral" :subtitle="`Chargement de la commande ${context.orderId}…`" />
 
     <OsAlert

@@ -9,14 +9,14 @@ import { scopeOf, readSettings, readOrInitializeSettings, writeSettings, publicS
 export default methods({
   async GET(req) {
     const scope = scopeOf(readQuery(req));
-    const { created, settings } = await readOrInitializeSettings(scope);
+    const { created, settings } = await readOrInitializeSettings(scope, { fresh: true });
     return { scope: publicScope(scope), created, settings: publicSettings(settings) };
   },
   async PUT(req) {
     const body = readBody(req);
     const scope = scopeOf(body.context);
     const saved = await writeSettings(scope, body.values);
-    return { scope: publicScope(scope), saved, settings: publicSettings(await readSettings(scope)) };
+    return { scope: publicScope(scope), saved, settings: publicSettings(await readSettings(scope, { fresh: true })) };
   },
 });
 

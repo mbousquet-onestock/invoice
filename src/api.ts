@@ -1,5 +1,3 @@
-import { invoiceUrls, billingContact } from '#lib/order.js';
-import { ORDER_FIELDS } from '#lib/onestock.js';
 import { requestContext } from './settings';
 import type { OnestockContext } from './composables/useOnestockContext';
 
@@ -28,26 +26,6 @@ async function post<T>(url: string, context: OnestockContext, payload: Record<st
 /** Every OneStock API call goes through the Vercel proxy (api/onestock-proxy.js). */
 export function onestock<T>(context: OnestockContext, method: string, path: string, body: Record<string, unknown> = {}) {
   return post<T>('/api/onestock-proxy', context, { method, path, body });
-}
-
-export async function fetchOrder(context: OnestockContext): Promise<OrderSummary> {
-  const orderId = context.orderId;
-  try {
-    const order = await onestock<Record<string, any>>(context, 'GET', `/orders/${encodeURIComponent(orderId)}`, {
-      fields: ORDER_FIELDS,
-      item_features_lang: context.lang || 'fr',
-    });
-    return {
-      id: order.id || orderId,
-      state: order.state,
-      date: order.date,
-      invoices: invoiceUrls(order),
-      billing: billingContact(order),
-    };
-  } catch (err) {
-    if ((err as { status?: number }).status === 404) throw new Error(`Commande ${orderId} introuvable`);
-    throw err;
-  }
 }
 
 export function sendInvoice(
