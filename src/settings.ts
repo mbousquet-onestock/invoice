@@ -9,7 +9,7 @@ export interface SettingValue {
   general: boolean;
   /** Supplied by the Settings API (global level): read only. */
   provided: boolean;
-  source: { site_id: string; extension_id: string } | null;
+  source: { site_id: string; extension_id: string; environment: string } | null;
 }
 export type SettingsMap = Record<string, SettingValue>;
 export interface SettingsScope {

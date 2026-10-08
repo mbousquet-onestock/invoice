@@ -35,7 +35,11 @@ function origin(key: string) {
   if (!s?.source) return 'Valeur par défaut';
   const site = s.source.site_id ? `site ${s.source.site_id}` : 'tous les sites';
   const extension = s.source.extension_id === '*' ? 'toutes les extensions' : `extension ${s.source.extension_id}`;
-  return `Enregistré pour ${site}, ${extension}`;
+  const environment =
+    s.source.environment && s.source.environment !== store.scope?.environment
+      ? ` (repris de ${s.source.environment})`
+      : '';
+  return `Enregistré pour ${site}, ${extension}${environment}`;
 }
 
 const tokenText = computed(() => {

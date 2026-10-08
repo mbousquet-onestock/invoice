@@ -40,6 +40,9 @@ Un setting est identifié par `key` + `site_id` + `extension_id` + `environment`
   (`*.api.qualif.onestock-retail.com` → `qualif`, sinon `prod`), ou forcé par `?environment=` ;
 - à la lecture, la priorité est : ce site + cette extension → ce site + `*` → tous les sites (`site_id` vide puis
   `*`) + cette extension → tous les sites + `*` → valeur par défaut ;
+- **repli prod → qualif** : en `prod`, une clé sans valeur dans aucun des niveaux ci-dessus est reprise de `qualif`
+  (même ordre). Les écritures restent dans l'environnement courant, et la première connexion ne crée pas en `prod`
+  une clé qui existe déjà en `qualif` ;
 - `onestock_token` est **fourni par l'API Settings au niveau global** : l'app le lit mais ne le crée ni ne le modifie
   (l'écran Paramètres indique seulement s'il est présent) ;
 - à l'écriture, `onestock_api_root` est enregistré pour le site et toutes les extensions (`*`), les autres
