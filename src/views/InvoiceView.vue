@@ -96,8 +96,8 @@ watch(
     <OsAlert
       v-else-if="store.loaded && !configured"
       type="warning"
-      title="Connexion OneStock non configurée"
-      subtitle="Renseignez le token ou les identifiants API via le bouton masqué à gauche de « Envoyer la facture »."
+      title="Paramètre onestock_token non renseigné"
+      subtitle="Renseignez-le via le bouton masqué à gauche de « Envoyer la facture »."
     />
 
     <OsAlert
@@ -111,6 +111,12 @@ watch(
     <OsAlert v-else-if="store.loading" type="neutral" subtitle="Chargement des paramètres…" />
     <OsAlert v-else-if="loading" type="neutral" :subtitle="`Chargement de la commande ${context.orderId}…`" />
 
+    <OsAlert
+      v-if="store.created.length"
+      type="info"
+      title="Première connexion : paramètres initialisés"
+      :subtitle="`Créés avec leur valeur par défaut : ${store.created.join(', ')}`"
+    />
     <OsAlert v-if="error" type="danger" title="Erreur" :subtitle="error" />
     <OsAlert v-if="sent" type="success" title="Facture envoyée" :subtitle="sent">
       <template v-if="context.embedded" #actions>

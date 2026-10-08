@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
-import { OsAlert, OsBadge, OsButton, OsCardLayout, OsCheckbox, OsDivider, OsInputText, OsSelect } from '#ds';
+import { OsAlert, OsBadge, OsButton, OsCardLayout, OsCheckbox, OsDivider, OsInputText } from '#ds';
 import type { OnestockContext } from '../composables/useOnestockContext';
 import { store, loadSettings, saveSettings } from '../settings';
 import { testSmtp } from '../api';
@@ -14,28 +14,13 @@ const message = ref<{ type: 'success' | 'danger'; text: string } | null>(null);
 const saving = ref(false);
 const testing = ref(false);
 
+const siteLabel = computed(() => (store.scope?.siteId ? `site ${store.scope.siteId}` : 'tous les sites'));
 const extensionId = computed(() => store.scope?.extensionId || props.context.extensionId);
-const target = reactive({ site_id: props.context.siteId, extension_id: '' });
-
-const siteOptions = computed(() => [
-  ...(props.context.siteId ? [{ id: props.context.siteId, primaryText: `Ce site (${props.context.siteId})` }] : []),
-  { id: '', primaryText: 'Tous les sites' },
-]);
-const extensionOptions = computed(() => [
-  { id: extensionId.value, primaryText: `Cette extension (${extensionId.value})` },
-  { id: '*', primaryText: 'Toutes les extensions (*)' },
-]);
-const authOptions = [
-  { id: 'token', primaryText: 'Token API' },
-  { id: 'credentials', primaryText: 'Identifiant / mot de passe (POST /login)' },
-];
-const versionOptions = ['v1', 'v2', 'v3', 'v4'].map((id) => ({ id, primaryText: id }));
 
 function fill() {
   const values = Object.fromEntries(Object.entries(store.settings).map(([key, s]) => [key, s.value]));
   Object.assign(form, values);
   initial.value = values;
-  target.extension_id ||= extensionId.value;
 }
 watch(() => store.settings, fill, { immediate: true });
 if (!store.loaded && props.context.ready) loadSettings(props.context);
@@ -65,7 +50,7 @@ async function save() {
   saving.value = true;
   message.value = null;
   try {
-    const saved = await saveSettings(props.context, target, changes.value);
+    const saved = await saveSettings(props.context, changes.value);
     message.value = {
       type: 'success',
       text: saved.length ? `${saved.length} paramètre(s) enregistré(s).` : 'Aucune modification à enregistrer.',
@@ -81,7 +66,7 @@ async function checkSmtp() {
   testing.value = true;
   message.value = null;
   try {
-    if (Object.keys(changes.value).length) await saveSettings(props.context, target, changes.value);
+    if (Object.keys(changes.value).length) await saveSettings(props.context, changes.value);
     await testSmtp(props.context);
     message.value = { type: 'success', text: 'Connexion SMTP réussie.' };
   } catch (err) {
@@ -104,35 +89,9 @@ async function checkSmtp() {
 
     <OsCardLayout v-if="store.loaded">
       <div class="group">
-        <div class="os-label-l">Enregistrer pour</div>
-        <div class="row">
-          <OsSelect v-model="target.site_id" label="Site" :options="siteOptions" />
-          <OsSelect v-model="target.extension_id" label="Extension" :options="extensionOptions" />
-        </div>
-        <span class="os-body-s hint">
-          À la lecture, la valeur du site est prioritaire sur celle de tous les sites, et celle de l'extension sur
-          celle de toutes les extensions.
-        </span>
-
-        <OsDivider />
-
         <div class="os-label-l">API OneStock</div>
-        <div class="row">
-          <OsSelect
-            v-model="form.onestock_auth_mode"
-            label="Authentification"
-            :options="authOptions"
-            :supporting-text="origin('onestock_auth_mode')"
-          />
-          <OsSelect
-            v-model="form.onestock_api_version"
-            label="Version"
-            :options="versionOptions"
-            :supporting-text="origin('onestock_api_version')"
-          />
-        </div>
+        <span class="os-body-s hint">Communs à toutes les extensions du {{ siteLabel }} (extension_id « * »).</span>
         <OsInputText
-          v-if="form.onestock_auth_mode !== 'credentials'"
           v-model="form.onestock_token"
           label="Token (onestock_token)"
           type="password"
@@ -140,33 +99,18 @@ async function checkSmtp() {
           :placeholder="secretPlaceholder('onestock_token')"
           :supporting-text="origin('onestock_token')"
         />
-        <div v-else class="row">
-          <OsInputText
-            v-model="form.onestock_user_id"
-            label="Identifiant (user_id)"
-            autocomplete="off"
-            :supporting-text="origin('onestock_user_id')"
-          />
-          <OsInputText
-            v-model="form.onestock_password"
-            label="Mot de passe"
-            type="password"
-            autocomplete="off"
-            :placeholder="secretPlaceholder('onestock_password')"
-            :supporting-text="origin('onestock_password')"
-          />
-        </div>
         <OsInputText
-          v-model="form.onestock_api_url"
-          label="URL de l'API (optionnelle)"
-          placeholder="https://c00.api.qualif.onestock-retail.com"
-          :supporting-text="
-            context.apiUrl ? `Vide : URL du contexte (${context.apiUrl})` : 'Vide : URL construite depuis le site ID'
-          "
+          v-model="form.onestock_api_root"
+          label="Racine de l'API (onestock_api_root)"
+          :placeholder="context.apiUrl || 'https://c00.api.qualif.onestock-retail.com'"
+          :supporting-text="`${origin('onestock_api_root')} — /v3 ajouté si la version n'est pas précisée`"
         />
 
         <OsDivider />
 
+        <span class="os-body-s hint">
+          Paramètres suivants propres à l'extension {{ extensionId }}, enregistrés pour le {{ siteLabel }}.
+        </span>
         <div class="os-label-l">Serveur SMTP</div>
         <div class="row">
           <OsInputText v-model="form.smtp_host" label="Hôte" placeholder="smtp.example.com" :supporting-text="origin('smtp_host')" />

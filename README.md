@@ -25,7 +25,7 @@ navigateur (iframe OneStock)             Vercel
   `POST` + `X-HTTP-Method-Override: GET` pour les routes GET à body.
 - Les identifiants OneStock et SMTP sont lus par les fonctions dans l'API Settings (voir ci-dessous).
 - `api/send-invoice` relit la commande côté serveur : seules les factures de la commande peuvent être envoyées.
-- L'URL de l'API est, par ordre de priorité : celle forcée dans les paramètres, celle reçue du contexte (`api_url`),
+- L'URL de l'API est, par ordre de priorité : `onestock_api_root`, celle reçue du contexte (`api_url`),
   sinon `https://{site_id}.api.qualif.onestock-retail.com` (ou `api.onestock-retail.com` en production).
 
 ## Paramètres (API Settings)
@@ -40,20 +40,23 @@ Un setting est identifié par `key` + `site_id` + `extension_id` + `environment`
   (`*.api.qualif.onestock-retail.com` → `qualif`, sinon `prod`), ou forcé par `?environment=` ;
 - à la lecture, la priorité est : ce site + cette extension → ce site + `*` → tous les sites + cette extension →
   tous les sites + `*` → valeur par défaut ;
-- l'écran Paramètres (bouton masqué à gauche de « Envoyer la facture ») indique l'origine de chaque valeur et laisse
-  choisir où enregistrer (ce site ou tous les sites, cette extension ou toutes). Seuls les champs modifiés sont écrits
-  (`PUT /api/settings/item?upsert=1`) ; un secret laissé vide conserve la valeur enregistrée.
+- à l'écriture, les paramètres OneStock sont enregistrés pour le site et toutes les extensions (`*`), les autres
+  pour le site et cette extension. Seuls les champs modifiés sont écrits (`PUT /api/settings/item?upsert=1`) ;
+  un secret laissé vide conserve la valeur enregistrée.
 
-| Clé | Rôle |
-| --- | --- |
-| `onestock_auth_mode` | `token` (défaut) ou `credentials` (`POST /login`) |
-| `onestock_token` 🔒 | Token API OneStock |
-| `onestock_user_id`, `onestock_password` 🔒 | Identifiants si `credentials` |
-| `onestock_api_url`, `onestock_api_version` | URL forcée (sinon celle du contexte), version (`v3`) |
-| `smtp_host`, `smtp_port`, `smtp_secure`, `smtp_user`, `smtp_password` 🔒, `smtp_from`, `smtp_bcc` | Serveur d'envoi |
-| `email_subject`, `email_body` | Modèle d'email (`{{order_id}}`, `{{first_name}}`, `{{last_name}}`, `{{email}}`) |
+**Première connexion** : à l'ouverture, les clés qui n'existent à aucun niveau sont créées (`POST /api/settings`)
+avec leur valeur par défaut, `onestock_api_root` prenant l'URL d'API reçue du contexte. Les secrets
+(`onestock_token`, `smtp_password`) ne sont pas créés sans valeur : l'app signale alors que `onestock_token` est
+à renseigner.
 
-🔒 chiffré par l'API Settings (le nom contient `token` / `password`), lu avec `decrypt=1` côté serveur uniquement.
+| Clé | Niveau | Rôle |
+| --- | --- | --- |
+| `onestock_token` 🔒 | site, `*` | Token de l'API OneStock |
+| `onestock_api_root` | site, `*` | Racine de l'API OneStock (sinon URL du contexte) ; `/v3` ajouté si aucune version n'est précisée |
+| `smtp_host`, `smtp_port`, `smtp_secure`, `smtp_user`, `smtp_password` 🔒, `smtp_from`, `smtp_bcc` | site, extension | Serveur d'envoi |
+| `email_subject`, `email_body` | site, extension | Modèle d'email (`{{order_id}}`, `{{first_name}}`, `{{last_name}}`, `{{email}}`) |
+
+🔒 chiffré par l'API Settings, lu avec `decrypt=1` côté serveur uniquement.
 
 ### Variables d'environnement Vercel
 

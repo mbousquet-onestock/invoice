@@ -5,6 +5,8 @@ export interface SettingValue {
   value: string;
   set: boolean;
   secret: boolean;
+  /** Shared by every extension of the site (extension_id "*"). */
+  general: boolean;
   source: { site_id: string; extension_id: string } | null;
 }
 export type SettingsMap = Record<string, SettingValue>;
@@ -19,6 +21,8 @@ export const store = reactive({
   loaded: false,
   loading: false,
   error: '',
+  /** Keys created with their default value on the first connection. */
+  created: [] as string[],
   scope: null as SettingsScope | null,
   settings: {} as SettingsMap,
 });
@@ -50,6 +54,7 @@ export async function loadSettings(context: OnestockContext) {
     const data = await parse(await fetch(`/api/settings?${params}`));
     store.scope = data.scope;
     store.settings = data.settings;
+    store.created = data.created || [];
     store.loaded = true;
   } catch (err) {
     store.error = (err as Error).message;
@@ -58,16 +63,12 @@ export async function loadSettings(context: OnestockContext) {
   }
 }
 
-export async function saveSettings(
-  context: OnestockContext,
-  target: { site_id: string; extension_id: string },
-  values: Record<string, string>,
-) {
+export async function saveSettings(context: OnestockContext, values: Record<string, string>) {
   const data = await parse(
     await fetch('/api/settings', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ context: requestContext(context), target, values }),
+      body: JSON.stringify({ context: requestContext(context), values }),
     }),
   );
   store.scope = data.scope;
@@ -79,9 +80,7 @@ export function setting(key: string) {
   return store.settings[key]?.value ?? '';
 }
 
+/** OneStock calls need onestock_token (onestock_api_root falls back on the URL of the context). */
 export function isConfigured() {
-  const s = store.settings;
-  return setting('onestock_auth_mode') === 'credentials'
-    ? Boolean(s.onestock_user_id?.value && s.onestock_password?.set)
-    : Boolean(s.onestock_token?.set);
+  return Boolean(store.settings.onestock_token?.set);
 }

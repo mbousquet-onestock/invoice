@@ -1,19 +1,25 @@
 import { methods, readBody, readQuery } from '../lib/http.js';
-import { scopeOf, readSettings, writeSettings, publicSettings } from '../lib/settings.js';
+import { scopeOf, readSettings, readOrInitializeSettings, writeSettings, publicSettings } from '../lib/settings.js';
 
 /**
- * GET  /api/settings?site_id=&extension_id=&api_url=&environment=  → settings of the context (secrets masked)
- * PUT  /api/settings { context, target: { site_id, extension_id }, values: { key: value } }
+ * GET /api/settings?site_id=&extension_id=&api_url=&environment=
+ *     → settings of the context (secrets masked); missing keys are created on the first connection
+ * PUT /api/settings { context, values: { key: value } } → each key written at its level (see targetOf)
  */
 export default methods({
   async GET(req) {
     const scope = scopeOf(readQuery(req));
-    return { scope, settings: publicSettings(await readSettings(scope)) };
+    const { created, settings } = await readOrInitializeSettings(scope);
+    return { scope: publicScope(scope), created, settings: publicSettings(settings) };
   },
   async PUT(req) {
     const body = readBody(req);
     const scope = scopeOf(body.context);
-    const saved = await writeSettings(scope, body.target, body.values);
-    return { scope, saved, settings: publicSettings(await readSettings(scope)) };
+    const saved = await writeSettings(scope, body.values);
+    return { scope: publicScope(scope), saved, settings: publicSettings(await readSettings(scope)) };
   },
 });
+
+function publicScope({ siteId, extensionId, environment }) {
+  return { siteId, extensionId, environment };
+}
