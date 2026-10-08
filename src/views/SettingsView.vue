@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
-import { OsAlert, OsBadge, OsButton, OsCardLayout, OsCheckbox, OsDivider, OsInputText } from '#ds';
+import { OsAlert, OsBadge, OsButton, OsCardLayout, OsCheckbox, OsDivider, OsInputText, OsTextBlock } from '#ds';
 import type { OnestockContext } from '../composables/useOnestockContext';
 import { store, loadSettings, saveSettings } from '../settings';
 import { testSmtp } from '../api';
@@ -37,6 +37,12 @@ function origin(key: string) {
   const extension = s.source.extension_id === '*' ? 'toutes les extensions' : `extension ${s.source.extension_id}`;
   return `Enregistré pour ${site}, ${extension}`;
 }
+
+const tokenText = computed(() => {
+  const token = store.settings.onestock_token;
+  if (!token?.set) return `Non trouvé dans l'API Settings (niveau global, environnement ${store.scope?.environment ?? '?'})`;
+  return `Fourni par l'API Settings — ${origin('onestock_token').replace('Enregistré pour ', '')}`;
+});
 
 function secretPlaceholder(key: string) {
   return store.settings[key]?.set ? '•••••••• (enregistré, laisser vide pour conserver)' : '';
@@ -90,15 +96,17 @@ async function checkSmtp() {
     <OsCardLayout v-if="store.loaded">
       <div class="group">
         <div class="os-label-l">API OneStock</div>
-        <span class="os-body-s hint">Communs à toutes les extensions du {{ siteLabel }} (extension_id « * »).</span>
-        <OsInputText
-          v-model="form.onestock_token"
-          label="Token (onestock_token)"
-          type="password"
-          autocomplete="off"
-          :placeholder="secretPlaceholder('onestock_token')"
-          :supporting-text="origin('onestock_token')"
-        />
+        <span class="os-body-s hint">
+          Le token est fourni au niveau global par l'API Settings ; la racine de l'API est commune à toutes les
+          extensions du {{ siteLabel }} (extension_id « * »).
+        </span>
+        <div class="provided">
+          <OsTextBlock primary-text="Token (onestock_token)" :tertiary-text="tokenText" />
+          <OsBadge
+            :text="store.settings.onestock_token?.set ? 'Fourni' : 'Absent'"
+            :color="store.settings.onestock_token?.set ? 'green' : 'red'"
+          />
+        </div>
         <OsInputText
           v-model="form.onestock_api_root"
           label="Racine de l'API (onestock_api_root)"
@@ -175,6 +183,7 @@ async function checkSmtp() {
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
 .row > :deep(*) { min-width: 200px; }
 .hint { color: #7f7f7f; }
+.provided { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .textarea { display: flex; flex-direction: column; gap: 2px; color: #4c4c4c; }
 .textarea textarea {
   resize: vertical; padding: 8px 12px; border: 1px solid #e5e5e5; border-radius: 5px; color: #333; outline: none;

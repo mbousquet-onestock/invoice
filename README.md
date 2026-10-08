@@ -38,31 +38,36 @@ Un setting est identifié par `key` + `site_id` + `extension_id` + `environment`
 
 - `site_id` et `extension_id` viennent du contexte OneStock ; `environment` est déduit de `api_url`
   (`*.api.qualif.onestock-retail.com` → `qualif`, sinon `prod`), ou forcé par `?environment=` ;
-- à la lecture, la priorité est : ce site + cette extension → ce site + `*` → tous les sites + cette extension →
-  tous les sites + `*` → valeur par défaut ;
-- à l'écriture, les paramètres OneStock sont enregistrés pour le site et toutes les extensions (`*`), les autres
+- à la lecture, la priorité est : ce site + cette extension → ce site + `*` → tous les sites (`site_id` vide puis
+  `*`) + cette extension → tous les sites + `*` → valeur par défaut ;
+- `onestock_token` est **fourni par l'API Settings au niveau global** : l'app le lit mais ne le crée ni ne le modifie
+  (l'écran Paramètres indique seulement s'il est présent) ;
+- à l'écriture, `onestock_api_root` est enregistré pour le site et toutes les extensions (`*`), les autres
   pour le site et cette extension. Seuls les champs modifiés sont écrits (`PUT /api/settings/item?upsert=1`) ;
   un secret laissé vide conserve la valeur enregistrée.
 
 **Première connexion** : à l'ouverture, les clés qui n'existent à aucun niveau sont créées (`POST /api/settings`)
 avec leur valeur par défaut, `onestock_api_root` prenant l'URL d'API reçue du contexte. Les secrets
-(`onestock_token`, `smtp_password`) ne sont pas créés sans valeur : l'app signale alors que `onestock_token` est
-à renseigner.
+(`smtp_password`) et `onestock_token` (fourni par l'API) ne sont pas créés : l'app signale si `onestock_token` est
+introuvable.
 
 | Clé | Niveau | Rôle |
 | --- | --- | --- |
-| `onestock_token` 🔒 | site, `*` | Token de l'API OneStock |
+| `onestock_token` 🔒 | global (lecture seule) | Token de l'API OneStock, fourni par l'API Settings |
 | `onestock_api_root` | site, `*` | Racine de l'API OneStock (sinon URL du contexte) ; `/v3` ajouté si aucune version n'est précisée |
 | `smtp_host`, `smtp_port`, `smtp_secure`, `smtp_user`, `smtp_password` 🔒, `smtp_from`, `smtp_bcc` | site, extension | Serveur d'envoi |
 | `email_subject`, `email_body` | site, extension | Modèle d'email (`{{order_id}}`, `{{first_name}}`, `{{last_name}}`, `{{email}}`) |
 
-🔒 chiffré par l'API Settings, lu avec `decrypt=1` côté serveur uniquement.
+🔒 chiffré par l'API Settings (`enc:v1:…`, AES-256-GCM), lu côté serveur uniquement : avec `decrypt=1`, et si une
+valeur revient encore chiffrée (ou si l'API ne peut pas déchiffrer), elle est déchiffrée localement par
+`lib/settings-secrets.js` (module fourni par l'application Extensions) avec `SETTINGS_ENCRYPTION_KEY`.
 
 ### Variables d'environnement Vercel
 
 | Variable | Valeur |
 | --- | --- |
 | `SETTINGS_API_KEY` | Clé déclarée dans `SETTINGS_API_KEYS` du projet Extensions (obligatoire) |
+| `SETTINGS_ENCRYPTION_KEY` | Même valeur que dans l'application Extensions (déchiffrement local des secrets) |
 | `SETTINGS_API_URL` | Par défaut `https://extensions-lemon.vercel.app/api/settings` |
 | `EXTENSION_ID` | `extension_id` utilisé hors contexte OneStock (défaut `invoice`) |
 | `SETTINGS_ENVIRONMENT` | Environnement par défaut sans `api_url` (défaut `qualif`) |

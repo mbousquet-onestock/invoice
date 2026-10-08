@@ -7,6 +7,8 @@ export interface SettingValue {
   secret: boolean;
   /** Shared by every extension of the site (extension_id "*"). */
   general: boolean;
+  /** Supplied by the Settings API (global level): read only. */
+  provided: boolean;
   source: { site_id: string; extension_id: string } | null;
 }
 export type SettingsMap = Record<string, SettingValue>;
@@ -80,7 +82,7 @@ export function setting(key: string) {
   return store.settings[key]?.value ?? '';
 }
 
-/** OneStock calls need onestock_token (onestock_api_root falls back on the URL of the context). */
+/** OneStock calls need onestock_token, provided globally by the Settings API. */
 export function isConfigured() {
   return Boolean(store.settings.onestock_token?.set);
 }

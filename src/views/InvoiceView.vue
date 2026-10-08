@@ -96,8 +96,8 @@ watch(
     <OsAlert
       v-else-if="store.loaded && !configured"
       type="warning"
-      title="Paramètre onestock_token non renseigné"
-      subtitle="Renseignez-le via le bouton masqué à gauche de « Envoyer la facture »."
+      title="onestock_token introuvable"
+      :subtitle="`Le token OneStock doit être fourni au niveau global par l'API Settings (environnement ${store.scope?.environment ?? '?'}).`"
     />
 
     <OsAlert
