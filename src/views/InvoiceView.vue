@@ -153,12 +153,7 @@ watch(
 
         <div class="block">
           <div class="os-label-l">Email au client</div>
-          <OsInputText
-            v-model="to"
-            label="Destinataire"
-            type="email"
-            supporting-text="Adresse de facturation de la commande (pricing_details.address.contact.email)"
-          />
+          <OsInputText v-model="to" label="Destinataire" type="email" />
           <OsInputText v-model="subject" label="Objet" />
           <label class="textarea">
             <span class="os-body-m">Message</span>
