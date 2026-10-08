@@ -1,0 +1,32 @@
+/* Subset of the OneStock design system tokens (design-system.onestock-retail.com > Documentation). */
+:root {
+  --os-primary-1000: #24bdb0;
+  --os-primary-800: #50cac0;
+  --os-primary-t-100: #24bdb01a;
+  --os-red-1000: #f44539;
+  --os-red-800: #f66a61;
+  --os-red-t-100: #f445391a;
+  --os-orange-1000: #fd7e14;
+  --os-orange-t-100: #fd7e141a;
+  --os-blue-1000: #2695f3;
+  --os-blue-t-100: #2695f31a;
+  --os-green-1000: #43a047;
+  --os-green-t-100: #43a0471a;
+  --os-neutral-700: #333333;
+  --os-neutral-500: #4c4c4c;
+  --os-neutral-300: #7f7f7f;
+  --os-neutral-200: #b2b2b2;
+  --os-neutral-100: #e5e5e5;
+  --os-neutral-t-30: #00000008;
+  --os-neutral-t-50: #0000000d;
+  --os-white: #ffffff;
+  --os-radius: 5px;
+}
+.os-title-l { font-family: Roboto, sans-serif; font-size: 1.375rem; font-weight: 500; }
+.os-title-m { font-family: Roboto, sans-serif; font-size: 1.25rem; font-weight: 500; }
+.os-label-l { font-family: Roboto, sans-serif; font-size: 1rem; font-weight: 500; }
+.os-label-m { font-family: Roboto, sans-serif; font-size: 1rem; font-weight: 400; }
+.os-label-s { font-family: Roboto, sans-serif; font-size: 0.875rem; font-weight: 400; }
+.os-body-l { font-family: Roboto, sans-serif; font-size: 0.875rem; font-weight: 500; }
+.os-body-m { font-family: Roboto, sans-serif; font-size: 0.75rem; font-weight: 500; }
+.os-body-s { font-family: Roboto, sans-serif; font-size: 0.75rem; font-weight: 400; }
