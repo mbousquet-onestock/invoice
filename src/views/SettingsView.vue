@@ -6,6 +6,7 @@ import { settings, saveSettings, type Settings } from '../settings';
 import { testSmtp } from '../api';
 
 defineProps<{ context: OnestockContext }>();
+const emit = defineEmits<{ back: [] }>();
 
 const form = reactive<Settings>(JSON.parse(JSON.stringify(settings)));
 const message = ref<{ type: 'success' | 'danger'; text: string } | null>(null);
@@ -43,6 +44,7 @@ async function checkSmtp() {
 
 <template>
   <section class="settings">
+    <h1 class="os-title-m title">Paramètres</h1>
     <OsAlert
       type="info"
       subtitle="Les paramètres sont conservés dans ce navigateur et transmis au proxy Vercel à chaque appel."
@@ -119,6 +121,7 @@ async function checkSmtp() {
         <OsAlert v-if="message" :type="message.type" :subtitle="message.text" />
 
         <div class="actions">
+          <OsButton class="back" type="tertiary" text="Retour" @click="emit('back')" />
           <OsButton type="secondary" text="Tester le SMTP" :pending="testing" @click="checkSmtp" />
           <OsButton text="Enregistrer" @click="save" />
         </div>
@@ -129,6 +132,7 @@ async function checkSmtp() {
 
 <style scoped>
 .settings { display: flex; flex-direction: column; gap: 16px; }
+.title { margin: 0; }
 .group { display: flex; flex-direction: column; gap: 12px; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
 .row > :deep(*) { min-width: 200px; }
@@ -139,4 +143,5 @@ async function checkSmtp() {
 }
 .textarea textarea:focus { border-color: #24bdb0; }
 .actions { display: flex; justify-content: flex-end; gap: 8px; }
+.actions .back { margin-right: auto; }
 </style>

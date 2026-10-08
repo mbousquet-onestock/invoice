@@ -8,8 +8,6 @@ import { settings } from '../settings';
 const props = defineProps<{ context: OnestockContext }>();
 const emit = defineEmits<{ close: []; openSettings: [] }>();
 
-const orderId = ref(props.context.orderId);
-const siteId = ref(props.context.siteId || settings.onestock.default_site_id);
 const order = ref<OrderSummary | null>(null);
 const loading = ref(false);
 const sending = ref(false);
@@ -21,6 +19,7 @@ const subject = ref('');
 const body = ref('');
 const selected = ref<Record<string, boolean>>({});
 
+const siteId = computed(() => props.context.siteId || settings.onestock.default_site_id);
 const callContext = computed(() => ({ siteId: siteId.value, apiUrl: props.context.apiUrl, lang: props.context.lang }));
 const selectedInvoices = computed(() => order.value?.invoices.filter((url) => selected.value[url]) ?? []);
 const configured = computed(() => {
@@ -44,10 +43,10 @@ async function load() {
   error.value = '';
   sent.value = '';
   order.value = null;
-  if (!orderId.value || !siteId.value) return;
+  if (!props.context.orderId || !siteId.value) return;
   loading.value = true;
   try {
-    const result = await fetchOrder(callContext.value, orderId.value.trim());
+    const result = await fetchOrder(callContext.value, props.context.orderId);
     order.value = result;
     selected.value = Object.fromEntries(result.invoices.map((url) => [url, true]));
     to.value = result.billing.email;
@@ -84,11 +83,9 @@ async function send() {
 
 // In the back office the order id arrives with the handshake, after the first render.
 watch(
-  () => [props.context.ready, props.context.orderId, props.context.siteId] as const,
-  ([ready, contextOrder, contextSite]) => {
-    if (contextOrder) orderId.value = contextOrder;
-    if (contextSite) siteId.value = contextSite;
-    if (ready && orderId.value && configured.value) load();
+  () => [props.context.ready, props.context.orderId, siteId.value] as const,
+  ([ready]) => {
+    if (ready && configured.value) load();
   },
   { immediate: true },
 );
@@ -100,20 +97,18 @@ watch(
       v-if="!configured"
       type="warning"
       title="Connexion OneStock non configurée"
-      subtitle="Renseignez le token ou les identifiants API dans l'onglet Paramètres."
-    >
-      <template #actions>
-        <OsButton type="secondary" text="Paramètres" @click="emit('openSettings')" />
-      </template>
-    </OsAlert>
+      subtitle="Renseignez le token ou les identifiants API via « Paramètres », en bas de page."
+    />
 
-    <OsCardLayout>
-      <form class="lookup" @submit.prevent="load">
-        <OsInputText v-model="orderId" label="Commande" placeholder="ID de la commande" :readonly="!!context.orderId" />
-        <OsInputText v-model="siteId" label="Site ID" placeholder="c00" :readonly="!!context.siteId" />
-        <OsButton text="Rechercher" :pending="loading" :disabled="!orderId || !siteId || !configured" @click="load" />
-      </form>
-    </OsCardLayout>
+    <OsAlert
+      v-else-if="context.ready && !context.orderId"
+      type="info"
+      title="Aucune commande dans le contexte"
+      subtitle="Ouvrez l'extension depuis le détail d'une commande OneStock."
+    />
+    <OsAlert v-else-if="context.ready && !siteId" type="warning" title="Site ID manquant dans le contexte" />
+    <OsAlert v-if="configured && !context.ready" type="neutral" subtitle="Chargement du contexte OneStock…" />
+    <OsAlert v-else-if="loading" type="neutral" :subtitle="`Chargement de la commande ${context.orderId}…`" />
 
     <OsAlert v-if="error" type="danger" title="Erreur" :subtitle="error" />
     <OsAlert v-if="sent" type="success" title="Facture envoyée" :subtitle="sent">
@@ -164,23 +159,23 @@ watch(
           </label>
         </div>
 
-        <div class="actions">
-          <OsButton
-            text="Envoyer la facture"
-            :pending="sending"
-            :disabled="!to || !selectedInvoices.length"
-            @click="send"
-          />
-        </div>
       </div>
     </OsCardLayout>
+
+    <footer class="actions">
+      <OsButton class="settings-link" type="tertiary" text="Paramètres" @click="emit('openSettings')" />
+      <OsButton
+        text="Envoyer la facture"
+        :pending="sending"
+        :disabled="!order || !to || !selectedInvoices.length"
+        @click="send"
+      />
+    </footer>
   </section>
 </template>
 
 <style scoped>
 .invoice-view { display: flex; flex-direction: column; gap: 16px; }
-.lookup { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
-.lookup > :deep(*:not(button)) { min-width: 180px; }
 .order { display: flex; flex-direction: column; gap: 16px; }
 .order-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
 .block { display: flex; flex-direction: column; gap: 8px; }
@@ -193,5 +188,8 @@ watch(
   font-family: Roboto, sans-serif;
 }
 .textarea textarea:focus { border-color: #24bdb0; }
-.actions { display: flex; justify-content: flex-end; }
+.actions { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+/* Discreet entry to the settings: barely visible until hovered or focused. */
+.settings-link { opacity: 0.25; transition: opacity 0.2s; }
+.settings-link:hover, .settings-link:focus-visible { opacity: 1; }
 </style>

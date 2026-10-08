@@ -26,9 +26,9 @@ navigateur (iframe OneStock)             Vercel
 - L'URL de l'API est, par ordre de priorité : celle forcée dans les paramètres, celle reçue du contexte (`api_url`),
   sinon `https://{site_id}.api.qualif.onestock-retail.com` (ou `api.onestock-retail.com` en production).
 
-## Onglet Paramètres
+## Paramètres
 
-Le système de fichiers Vercel n'étant pas persistant, les paramètres sont enregistrés dans le navigateur
+Accessibles via le bouton discret « Paramètres » en bas à gauche (à côté de « Envoyer la facture »). Le système de fichiers Vercel n'étant pas persistant, les paramètres sont enregistrés dans le navigateur
 (localStorage) et envoyés avec chaque appel :
 
 - **API OneStock** : token, ou identifiant / mot de passe (token obtenu par `POST /login` et mis en cache), version,
@@ -71,7 +71,7 @@ npm test           # tests unitaires (lecture de la commande, proxy)
 npm run typecheck
 ```
 
-Hors OneStock, ouvrir `http://localhost:5173/?site_id=c00&order_id=ORD000001`.
+La commande et le site ID viennent uniquement du contexte OneStock. Pour tester hors OneStock : `http://localhost:5173/?site_id=c00&order_id=ORD000001`.
 
 ## Déploiement
 
