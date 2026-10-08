@@ -29,6 +29,16 @@ const smtpSecure = computed({
   get: () => form.smtp_secure === 'true',
   set: (value: boolean) => (form.smtp_secure = String(value)),
 });
+// Same rule as the server (lib/mailer.js): 465 = direct TLS, 25 / 587 / 2525 = STARTTLS; the box only matters for
+// other ports.
+const tlsFixedByPort = computed(() => [25, 465, 587, 2525].includes(Number(form.smtp_port)));
+watch(
+  () => form.smtp_port,
+  (port) => {
+    if (Number(port) === 465) form.smtp_secure = 'true';
+    else if ([25, 587, 2525].includes(Number(port))) form.smtp_secure = 'false';
+  },
+);
 
 function origin(key: string) {
   const s = store.settings[key];
@@ -128,7 +138,14 @@ async function checkSmtp() {
           <OsInputText v-model="form.smtp_host" label="Hôte" placeholder="smtp.example.com" :supporting-text="origin('smtp_host')" />
           <OsInputText v-model="form.smtp_port" label="Port" type="number" :supporting-text="origin('smtp_port')" />
         </div>
-        <OsCheckbox v-model="smtpSecure" label="Connexion TLS directe (port 465)" />
+        <OsCheckbox
+          v-model="smtpSecure"
+          label="Connexion TLS directe (sinon STARTTLS)"
+          :disabled="tlsFixedByPort"
+        />
+        <span v-if="tlsFixedByPort" class="os-body-s hint">
+          Mode imposé par le port : {{ Number(form.smtp_port) === 465 ? 'TLS direct' : 'STARTTLS' }}.
+        </span>
         <div class="row">
           <OsInputText v-model="form.smtp_user" label="Utilisateur" autocomplete="off" :supporting-text="origin('smtp_user')" />
           <OsInputText
