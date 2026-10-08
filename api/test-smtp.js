@@ -1,8 +1,11 @@
-import { postHandler } from '../lib/http.js';
+import { methods, readBody } from '../lib/http.js';
 import { verifySmtp } from '../lib/mailer.js';
-import { withDefaults } from '../lib/settings.js';
+import { loadRuntimeConfig } from '../lib/settings.js';
 
-export default postHandler(async (body) => {
-  await verifySmtp(withDefaults(body.settings).smtp);
-  return { ok: true };
+export default methods({
+  async POST(req) {
+    const { config } = await loadRuntimeConfig(readBody(req).context);
+    await verifySmtp(config.smtp);
+    return { ok: true };
+  },
 });

@@ -1,38 +1,88 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue';
-import { OsAlert, OsButton, OsCardLayout, OsCheckbox, OsDivider, OsInputText, OsSelect } from '#ds';
+import { computed, reactive, ref, watch } from 'vue';
+import { OsAlert, OsBadge, OsButton, OsCardLayout, OsCheckbox, OsDivider, OsInputText, OsSelect } from '#ds';
 import type { OnestockContext } from '../composables/useOnestockContext';
-import { settings, saveSettings, type Settings } from '../settings';
+import { store, loadSettings, saveSettings } from '../settings';
 import { testSmtp } from '../api';
 
-defineProps<{ context: OnestockContext }>();
+const props = defineProps<{ context: OnestockContext }>();
 const emit = defineEmits<{ back: [] }>();
 
-const form = reactive<Settings>(JSON.parse(JSON.stringify(settings)));
+const form = reactive<Record<string, string>>({});
+const initial = ref<Record<string, string>>({});
 const message = ref<{ type: 'success' | 'danger'; text: string } | null>(null);
+const saving = ref(false);
 const testing = ref(false);
 
+const extensionId = computed(() => store.scope?.extensionId || props.context.extensionId);
+const target = reactive({ site_id: props.context.siteId, extension_id: '' });
+
+const siteOptions = computed(() => [
+  ...(props.context.siteId ? [{ id: props.context.siteId, primaryText: `Ce site (${props.context.siteId})` }] : []),
+  { id: '', primaryText: 'Tous les sites' },
+]);
+const extensionOptions = computed(() => [
+  { id: extensionId.value, primaryText: `Cette extension (${extensionId.value})` },
+  { id: '*', primaryText: 'Toutes les extensions (*)' },
+]);
 const authOptions = [
   { id: 'token', primaryText: 'Token API' },
   { id: 'credentials', primaryText: 'Identifiant / mot de passe (POST /login)' },
 ];
-const environmentOptions = [
-  { id: 'qualif', primaryText: 'Qualification' },
-  { id: 'production', primaryText: 'Production' },
-];
 const versionOptions = ['v1', 'v2', 'v3', 'v4'].map((id) => ({ id, primaryText: id }));
 
-function save() {
-  saveSettings(form);
-  message.value = { type: 'success', text: 'Paramètres enregistrés dans ce navigateur.' };
+function fill() {
+  const values = Object.fromEntries(Object.entries(store.settings).map(([key, s]) => [key, s.value]));
+  Object.assign(form, values);
+  initial.value = values;
+  target.extension_id ||= extensionId.value;
+}
+watch(() => store.settings, fill, { immediate: true });
+if (!store.loaded && props.context.ready) loadSettings(props.context);
+
+const smtpSecure = computed({
+  get: () => form.smtp_secure === 'true',
+  set: (value: boolean) => (form.smtp_secure = String(value)),
+});
+
+function origin(key: string) {
+  const s = store.settings[key];
+  if (!s?.source) return 'Valeur par défaut';
+  const site = s.source.site_id ? `site ${s.source.site_id}` : 'tous les sites';
+  const extension = s.source.extension_id === '*' ? 'toutes les extensions' : `extension ${s.source.extension_id}`;
+  return `Enregistré pour ${site}, ${extension}`;
+}
+
+function secretPlaceholder(key: string) {
+  return store.settings[key]?.set ? '•••••••• (enregistré, laisser vide pour conserver)' : '';
+}
+
+const changes = computed(() =>
+  Object.fromEntries(Object.entries(form).filter(([key, value]) => value !== initial.value[key])),
+);
+
+async function save() {
+  saving.value = true;
+  message.value = null;
+  try {
+    const saved = await saveSettings(props.context, target, changes.value);
+    message.value = {
+      type: 'success',
+      text: saved.length ? `${saved.length} paramètre(s) enregistré(s).` : 'Aucune modification à enregistrer.',
+    };
+  } catch (err) {
+    message.value = { type: 'danger', text: (err as Error).message };
+  } finally {
+    saving.value = false;
+  }
 }
 
 async function checkSmtp() {
-  saveSettings(form);
   testing.value = true;
   message.value = null;
   try {
-    await testSmtp();
+    if (Object.keys(changes.value).length) await saveSettings(props.context, target, changes.value);
+    await testSmtp(props.context);
     message.value = { type: 'success', text: 'Connexion SMTP réussie.' };
   } catch (err) {
     message.value = { type: 'danger', text: `SMTP : ${(err as Error).message}` };
@@ -44,47 +94,74 @@ async function checkSmtp() {
 
 <template>
   <section class="settings">
-    <h1 class="os-title-m title">Paramètres</h1>
-    <OsAlert
-      type="info"
-      subtitle="Les paramètres sont conservés dans ce navigateur et transmis au proxy Vercel à chaque appel."
-    />
+    <div class="head">
+      <h1 class="os-title-m title">Paramètres</h1>
+      <OsBadge v-if="store.scope" :text="`Environnement : ${store.scope.environment}`" color="grey" />
+    </div>
 
-    <OsCardLayout>
+    <OsAlert v-if="store.error" type="danger" title="API Settings" :subtitle="store.error" />
+    <OsAlert v-else-if="store.loading && !store.loaded" type="neutral" subtitle="Chargement des paramètres…" />
+
+    <OsCardLayout v-if="store.loaded">
       <div class="group">
+        <div class="os-label-l">Enregistrer pour</div>
+        <div class="row">
+          <OsSelect v-model="target.site_id" label="Site" :options="siteOptions" />
+          <OsSelect v-model="target.extension_id" label="Extension" :options="extensionOptions" />
+        </div>
+        <span class="os-body-s hint">
+          À la lecture, la valeur du site est prioritaire sur celle de tous les sites, et celle de l'extension sur
+          celle de toutes les extensions.
+        </span>
+
+        <OsDivider />
+
         <div class="os-label-l">API OneStock</div>
         <div class="row">
-          <OsSelect v-model="form.onestock.auth_mode" label="Authentification" :options="authOptions" />
-          <OsSelect v-model="form.onestock.api_version" label="Version" :options="versionOptions" />
+          <OsSelect
+            v-model="form.onestock_auth_mode"
+            label="Authentification"
+            :options="authOptions"
+            :supporting-text="origin('onestock_auth_mode')"
+          />
+          <OsSelect
+            v-model="form.onestock_api_version"
+            label="Version"
+            :options="versionOptions"
+            :supporting-text="origin('onestock_api_version')"
+          />
         </div>
         <OsInputText
-          v-if="form.onestock.auth_mode === 'token'"
-          v-model="form.onestock.token"
-          label="Token"
+          v-if="form.onestock_auth_mode !== 'credentials'"
+          v-model="form.onestock_token"
+          label="Token (onestock_token)"
           type="password"
           autocomplete="off"
+          :placeholder="secretPlaceholder('onestock_token')"
+          :supporting-text="origin('onestock_token')"
         />
         <div v-else class="row">
-          <OsInputText v-model="form.onestock.user_id" label="Identifiant (user_id)" autocomplete="off" />
-          <OsInputText v-model="form.onestock.password" label="Mot de passe" type="password" autocomplete="off" />
-        </div>
-        <div class="row">
           <OsInputText
-            v-model="form.onestock.default_site_id"
-            label="Site ID par défaut"
-            placeholder="c00"
-            :supporting-text="context.siteId ? `Contexte : ${context.siteId}` : 'Utilisé hors contexte OneStock'"
+            v-model="form.onestock_user_id"
+            label="Identifiant (user_id)"
+            autocomplete="off"
+            :supporting-text="origin('onestock_user_id')"
           />
-          <OsSelect v-model="form.onestock.environment" label="Environnement" :options="environmentOptions" />
+          <OsInputText
+            v-model="form.onestock_password"
+            label="Mot de passe"
+            type="password"
+            autocomplete="off"
+            :placeholder="secretPlaceholder('onestock_password')"
+            :supporting-text="origin('onestock_password')"
+          />
         </div>
         <OsInputText
-          v-model="form.onestock.api_url"
+          v-model="form.onestock_api_url"
           label="URL de l'API (optionnelle)"
           placeholder="https://c00.api.qualif.onestock-retail.com"
           :supporting-text="
-            context.apiUrl
-              ? `URL reçue du contexte : ${context.apiUrl}`
-              : 'Vide : URL du contexte OneStock, sinon construite depuis le site ID et l\'environnement'
+            context.apiUrl ? `Vide : URL du contexte (${context.apiUrl})` : 'Vide : URL construite depuis le site ID'
           "
         />
 
@@ -92,30 +169,43 @@ async function checkSmtp() {
 
         <div class="os-label-l">Serveur SMTP</div>
         <div class="row">
-          <OsInputText v-model="form.smtp.host" label="Hôte" placeholder="smtp.example.com" />
-          <OsInputText v-model.number="form.smtp.port" label="Port" type="number" />
+          <OsInputText v-model="form.smtp_host" label="Hôte" placeholder="smtp.example.com" :supporting-text="origin('smtp_host')" />
+          <OsInputText v-model="form.smtp_port" label="Port" type="number" :supporting-text="origin('smtp_port')" />
         </div>
-        <OsCheckbox v-model="form.smtp.secure" label="Connexion TLS directe (port 465)" />
+        <OsCheckbox v-model="smtpSecure" label="Connexion TLS directe (port 465)" />
         <div class="row">
-          <OsInputText v-model="form.smtp.user" label="Utilisateur" autocomplete="off" />
-          <OsInputText v-model="form.smtp.password" label="Mot de passe" type="password" autocomplete="off" />
+          <OsInputText v-model="form.smtp_user" label="Utilisateur" autocomplete="off" :supporting-text="origin('smtp_user')" />
+          <OsInputText
+            v-model="form.smtp_password"
+            label="Mot de passe"
+            type="password"
+            autocomplete="off"
+            :placeholder="secretPlaceholder('smtp_password')"
+            :supporting-text="origin('smtp_password')"
+          />
         </div>
         <div class="row">
-          <OsInputText v-model="form.smtp.from" label="Expéditeur" placeholder="Service client <factures@example.com>" />
-          <OsInputText v-model="form.smtp.bcc" label="Copie cachée (optionnelle)" />
+          <OsInputText
+            v-model="form.smtp_from"
+            label="Expéditeur"
+            placeholder="Service client <factures@example.com>"
+            :supporting-text="origin('smtp_from')"
+          />
+          <OsInputText v-model="form.smtp_bcc" label="Copie cachée (optionnelle)" :supporting-text="origin('smtp_bcc')" />
         </div>
 
         <OsDivider />
 
         <div class="os-label-l">Modèle d'email</div>
         <OsInputText
-          v-model="form.email.subject"
+          v-model="form.email_subject"
           label="Objet"
-          supporting-text="Variables : {{order_id}}, {{first_name}}, {{last_name}}, {{email}}"
+          :supporting-text="`Variables : {{order_id}}, {{first_name}}, {{last_name}}, {{email}} — ${origin('email_subject')}`"
         />
         <label class="textarea">
           <span class="os-body-m">Message</span>
-          <textarea v-model="form.email.body" class="os-label-s" rows="7" />
+          <textarea v-model="form.email_body" class="os-label-s" rows="7" />
+          <span class="os-body-s hint">{{ origin('email_body') }}</span>
         </label>
 
         <OsAlert v-if="message" :type="message.type" :subtitle="message.text" />
@@ -123,19 +213,24 @@ async function checkSmtp() {
         <div class="actions">
           <OsButton class="back" type="tertiary" text="Retour" @click="emit('back')" />
           <OsButton type="secondary" text="Tester le SMTP" :pending="testing" @click="checkSmtp" />
-          <OsButton text="Enregistrer" @click="save" />
+          <OsButton text="Enregistrer" :pending="saving" @click="save" />
         </div>
       </div>
     </OsCardLayout>
+    <div v-else class="actions">
+      <OsButton class="back" type="tertiary" text="Retour" @click="emit('back')" />
+    </div>
   </section>
 </template>
 
 <style scoped>
 .settings { display: flex; flex-direction: column; gap: 16px; }
+.head { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .title { margin: 0; }
 .group { display: flex; flex-direction: column; gap: 12px; }
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
 .row > :deep(*) { min-width: 200px; }
+.hint { color: #7f7f7f; }
 .textarea { display: flex; flex-direction: column; gap: 2px; color: #4c4c4c; }
 .textarea textarea {
   resize: vertical; padding: 8px 12px; border: 1px solid #e5e5e5; border-radius: 5px; color: #333; outline: none;

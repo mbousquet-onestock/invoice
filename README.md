@@ -17,24 +17,55 @@ navigateur (iframe OneStock)             Vercel
  └─ Vue 3 + design system OneStock ─▶ api/onestock-proxy.js ─▶ API OneStock
                                       api/send-invoice.js    ─▶ API OneStock + téléchargement facture + SMTP
                                       api/test-smtp.js       ─▶ SMTP
+                                      api/settings.js        ─▶ API Settings (lecture / écriture des paramètres)
 ```
 
 - Le navigateur n'appelle jamais OneStock directement : tous les appels passent par `POST /api/onestock-proxy`
   `{ method, path, body, site_id, api_url }`. Le proxy ajoute `site_id` et le token, et utilise
   `POST` + `X-HTTP-Method-Override: GET` pour les routes GET à body.
+- Les identifiants OneStock et SMTP sont lus par les fonctions dans l'API Settings (voir ci-dessous).
 - `api/send-invoice` relit la commande côté serveur : seules les factures de la commande peuvent être envoyées.
 - L'URL de l'API est, par ordre de priorité : celle forcée dans les paramètres, celle reçue du contexte (`api_url`),
   sinon `https://{site_id}.api.qualif.onestock-retail.com` (ou `api.onestock-retail.com` en production).
 
-## Paramètres
+## Paramètres (API Settings)
 
-Accessibles via le bouton « Paramètres », masqué juste à gauche de « Envoyer la facture » (il apparaît au survol). Le système de fichiers Vercel n'étant pas persistant, les paramètres sont enregistrés dans le navigateur
-(localStorage) et envoyés avec chaque appel :
+Tous les paramètres de fonctionnement sont stockés dans l'**API Settings** de l'application Extensions
+(`https://extensions-lemon.vercel.app/api/settings`, base Postgres Vercel). Cette API n'est appelée que par les
+fonctions Vercel : la clé d'API et les secrets déchiffrés n'atteignent jamais le navigateur.
 
-- **API OneStock** : token, ou identifiant / mot de passe (token obtenu par `POST /login` et mis en cache), version,
-  site ID par défaut, environnement, URL forcée ;
-- **SMTP** : hôte, port, TLS, utilisateur, mot de passe, expéditeur, copie cachée (bouton « Tester le SMTP ») ;
-- **Modèle d'email** : objet et message, variables `{{order_id}}`, `{{first_name}}`, `{{last_name}}`, `{{email}}`.
+Un setting est identifié par `key` + `site_id` + `extension_id` + `environment` :
+
+- `site_id` et `extension_id` viennent du contexte OneStock ; `environment` est déduit de `api_url`
+  (`*.api.qualif.onestock-retail.com` → `qualif`, sinon `prod`), ou forcé par `?environment=` ;
+- à la lecture, la priorité est : ce site + cette extension → ce site + `*` → tous les sites + cette extension →
+  tous les sites + `*` → valeur par défaut ;
+- l'écran Paramètres (bouton masqué à gauche de « Envoyer la facture ») indique l'origine de chaque valeur et laisse
+  choisir où enregistrer (ce site ou tous les sites, cette extension ou toutes). Seuls les champs modifiés sont écrits
+  (`PUT /api/settings/item?upsert=1`) ; un secret laissé vide conserve la valeur enregistrée.
+
+| Clé | Rôle |
+| --- | --- |
+| `onestock_auth_mode` | `token` (défaut) ou `credentials` (`POST /login`) |
+| `onestock_token` 🔒 | Token API OneStock |
+| `onestock_user_id`, `onestock_password` 🔒 | Identifiants si `credentials` |
+| `onestock_api_url`, `onestock_api_version` | URL forcée (sinon celle du contexte), version (`v3`) |
+| `smtp_host`, `smtp_port`, `smtp_secure`, `smtp_user`, `smtp_password` 🔒, `smtp_from`, `smtp_bcc` | Serveur d'envoi |
+| `email_subject`, `email_body` | Modèle d'email (`{{order_id}}`, `{{first_name}}`, `{{last_name}}`, `{{email}}`) |
+
+🔒 chiffré par l'API Settings (le nom contient `token` / `password`), lu avec `decrypt=1` côté serveur uniquement.
+
+### Variables d'environnement Vercel
+
+| Variable | Valeur |
+| --- | --- |
+| `SETTINGS_API_KEY` | Clé déclarée dans `SETTINGS_API_KEYS` du projet Extensions (obligatoire) |
+| `SETTINGS_API_URL` | Par défaut `https://extensions-lemon.vercel.app/api/settings` |
+| `EXTENSION_ID` | `extension_id` utilisé hors contexte OneStock (défaut `invoice`) |
+| `SETTINGS_ENVIRONMENT` | Environnement par défaut sans `api_url` (défaut `qualif`) |
+
+Côté application Extensions, `SETTINGS_API_KEYS` et `SETTINGS_ENCRYPTION_KEY` doivent être définies (sinon 503 /
+`encryption_key_missing`). En local, mettre ces variables dans `.env.local` (voir `.env.example`).
 
 ## Design system OneStock
 
@@ -67,14 +98,15 @@ Sur Vercel, ajouter un `.npmrc` qui lit le token depuis une variable d'environne
 ```bash
 npm install
 npm run dev        # Vite + fonctions /api servies localement (pas besoin de la CLI Vercel)
-npm test           # tests unitaires (lecture de la commande, proxy)
+npm test           # tests unitaires (commande, proxy, API Settings)
 npm run typecheck
 ```
 
-La commande et le site ID viennent uniquement du contexte OneStock. Pour tester hors OneStock : `http://localhost:5173/?site_id=c00&order_id=ORD000001`.
+La commande et le site ID viennent uniquement du contexte OneStock. Pour tester hors OneStock :
+`http://localhost:5173/?site_id=c00&order_id=ORD000001&extension_id=invoice&environment=qualif`.
 
 ## Déploiement
 
 Importer le dépôt dans Vercel (framework Vite, sortie `dist/`, fonctions `api/`) ou `vercel deploy`.
 Communiquer ensuite l'URL Vercel à votre contact OneStock pour déclarer l'extension avec un anchor `bo.order.action`
-(path `/`). `vercel.json` autorise l'affichage en iframe (`frame-ancestors *`).
+(path `/`), et définir `SETTINGS_API_KEY` dans les variables d'environnement du projet. `vercel.json` autorise l'affichage en iframe (`frame-ancestors *`).

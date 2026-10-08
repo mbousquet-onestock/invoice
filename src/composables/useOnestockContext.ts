@@ -14,6 +14,8 @@ export interface OnestockContext {
   hostApp: string;
   apiUrl: string;
   orderId: string;
+  /** Optional ?environment= (qualif, prod…); otherwise deduced server side from api_url. */
+  environment: string;
   parentOrigin: string;
 }
 
@@ -36,9 +38,10 @@ export function useOnestockContext() {
     siteId: params.get('site_id') || '',
     lang: params.get('lang') || 'fr',
     hostApp: params.get('host_app') || '',
-    apiUrl: '',
-    // Outside of OneStock, ?order_id= can be used to test the page.
+    apiUrl: params.get('api_url') || '',
+    // Outside of OneStock, ?order_id= (and ?api_url=) can be used to test the page.
     orderId: params.get('order_id') || '',
+    environment: params.get('environment') || '',
     parentOrigin: originOf(params.get('parent_url') || ''),
   });
 
@@ -53,6 +56,7 @@ export function useOnestockContext() {
     context.apiUrl = data.api_url || context.apiUrl;
     context.siteId = data.site_id || context.siteId;
     context.userId = data.user_id || context.userId;
+    context.extensionId = data.extension_id || context.extensionId;
     context.orderId = data.order_id || (data.order_ids || '').split(',')[0] || context.orderId;
     context.ready = true;
   }

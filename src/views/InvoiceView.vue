@@ -3,7 +3,7 @@ import { computed, ref, watch } from 'vue';
 import { OsAlert, OsBadge, OsButton, OsCardLayout, OsCheckbox, OsDivider, OsInputText, OsTextBlock } from '#ds';
 import type { OnestockContext } from '../composables/useOnestockContext';
 import { fetchOrder, renderTemplate, sendInvoice, type OrderSummary } from '../api';
-import { settings } from '../settings';
+import { store, loadSettings, isConfigured, setting } from '../settings';
 
 const props = defineProps<{ context: OnestockContext }>();
 const emit = defineEmits<{ close: []; openSettings: [] }>();
@@ -19,13 +19,9 @@ const subject = ref('');
 const body = ref('');
 const selected = ref<Record<string, boolean>>({});
 
-const siteId = computed(() => props.context.siteId || settings.onestock.default_site_id);
-const callContext = computed(() => ({ siteId: siteId.value, apiUrl: props.context.apiUrl, lang: props.context.lang }));
+const siteId = computed(() => props.context.siteId);
 const selectedInvoices = computed(() => order.value?.invoices.filter((url) => selected.value[url]) ?? []);
-const configured = computed(() => {
-  const os = settings.onestock;
-  return os.auth_mode === 'credentials' ? Boolean(os.user_id && os.password) : Boolean(os.token);
-});
+const configured = computed(() => store.loaded && isConfigured());
 
 function fileName(url: string) {
   try {
@@ -46,13 +42,13 @@ async function load() {
   if (!props.context.orderId || !siteId.value) return;
   loading.value = true;
   try {
-    const result = await fetchOrder(callContext.value, props.context.orderId);
+    const result = await fetchOrder(props.context);
     order.value = result;
     selected.value = Object.fromEntries(result.invoices.map((url) => [url, true]));
     to.value = result.billing.email;
     const vars = { order_id: result.id, ...result.billing };
-    subject.value = renderTemplate(settings.email.subject, vars);
-    body.value = renderTemplate(settings.email.body, vars);
+    subject.value = renderTemplate(setting('email_subject'), vars);
+    body.value = renderTemplate(setting('email_body'), vars);
   } catch (err) {
     error.value = (err as Error).message;
   } finally {
@@ -66,7 +62,7 @@ async function send() {
   sent.value = '';
   sending.value = true;
   try {
-    const result = await sendInvoice(callContext.value, {
+    const result = await sendInvoice(props.context, {
       order_id: order.value.id,
       to: to.value,
       subject: subject.value,
@@ -81,11 +77,14 @@ async function send() {
   }
 }
 
-// In the back office the order id arrives with the handshake, after the first render.
+// In the back office the context arrives with the handshake, after the first render:
+// settings are read for that site / extension / environment, then the order is loaded.
 watch(
-  () => [props.context.ready, props.context.orderId, siteId.value] as const,
-  ([ready]) => {
-    if (ready && configured.value) load();
+  () => [props.context.ready, props.context.orderId, props.context.siteId, props.context.extensionId] as const,
+  async ([ready]) => {
+    if (!ready) return;
+    if (!store.loaded) await loadSettings(props.context);
+    if (configured.value) load();
   },
   { immediate: true },
 );
@@ -93,8 +92,9 @@ watch(
 
 <template>
   <section class="invoice-view">
+    <OsAlert v-if="store.error" type="danger" title="Paramètres illisibles" :subtitle="store.error" />
     <OsAlert
-      v-if="!configured"
+      v-else-if="store.loaded && !configured"
       type="warning"
       title="Connexion OneStock non configurée"
       subtitle="Renseignez le token ou les identifiants API via le bouton masqué à gauche de « Envoyer la facture »."
@@ -107,7 +107,8 @@ watch(
       subtitle="Ouvrez l'extension depuis le détail d'une commande OneStock."
     />
     <OsAlert v-else-if="context.ready && !siteId" type="warning" title="Site ID manquant dans le contexte" />
-    <OsAlert v-if="configured && !context.ready" type="neutral" subtitle="Chargement du contexte OneStock…" />
+    <OsAlert v-if="!context.ready" type="neutral" subtitle="Chargement du contexte OneStock…" />
+    <OsAlert v-else-if="store.loading" type="neutral" subtitle="Chargement des paramètres…" />
     <OsAlert v-else-if="loading" type="neutral" :subtitle="`Chargement de la commande ${context.orderId}…`" />
 
     <OsAlert v-if="error" type="danger" title="Erreur" :subtitle="error" />

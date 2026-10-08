@@ -1,4 +1,4 @@
-import { defineConfig, type Plugin } from 'vite';
+import { defineConfig, loadEnv, type Plugin } from 'vite';
 import vue from '@vitejs/plugin-vue';
 import { createRequire } from 'node:module';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -45,12 +45,16 @@ function vercelApiDev(): Plugin {
   };
 }
 
-export default defineConfig({
-  plugins: [vue(), vercelApiDev()],
-  resolve: {
-    alias: {
-      '#ds': designSystemEntry(),
-      '#lib': path.join(root, 'lib'),
+export default defineConfig(({ mode }) => {
+  // Server-side variables (SETTINGS_API_KEY…) from .env / .env.local for the local /api functions.
+  for (const [key, value] of Object.entries(loadEnv(mode, root, ''))) process.env[key] ??= value;
+  return {
+    plugins: [vue(), vercelApiDev()],
+    resolve: {
+      alias: {
+        '#ds': designSystemEntry(),
+        '#lib': path.join(root, 'lib'),
+      },
     },
-  },
+  };
 });
