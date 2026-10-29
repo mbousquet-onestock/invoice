@@ -85,6 +85,25 @@ valeur revient encore chiffrée (ou si l'API ne peut pas déchiffrer), elle est 
 Côté application Extensions, `SETTINGS_API_KEYS` et `SETTINGS_ENCRYPTION_KEY` doivent être définies (sinon 503 /
 `encryption_key_missing`). En local, mettre ces variables dans `.env.local` (voir `.env.example`).
 
+## Logs des erreurs d'API
+
+Toute erreur d'API est écrite dans les logs des fonctions Vercel (projet → **Logs**, rechercher `api_error`), au
+format de l'onglet « Logs API » de l'application Extensions : une ligne JSON par erreur avec l'API, la méthode,
+l'URL, le statut, la durée et les corps de requête / réponse, les valeurs sensibles (token, mot de passe, clé,
+valeurs `enc:v1:`…) étant remplacées par `••••••••`.
+
+| `api` | Erreurs journalisées |
+| --- | --- |
+| `Settings API` | Statut ≠ 2xx ou API injoignable, `decrypt_error`, échec du déchiffrement local |
+| `OneStock API` | Statut ≠ 2xx ou API injoignable |
+| `Facture` | Téléchargement de la facture en échec |
+| `SMTP` | Connexion (`VERIFY`) ou envoi (`SEND`) en échec, avec hôte, port, mode TLS et utilisateur |
+| `Extension` | Réponse d'erreur d'une route `/api/*` de l'application |
+
+Les erreurs que l'application rattrape (`already_exists` à l'initialisation, `decrypt=1` refusé puis relecture des
+valeurs brutes) sont journalisées en `warn` avec `"handled": true`, les autres en `error`. Les appels à l'API
+Settings apparaissent en plus, côté application Extensions, dans son onglet « Logs API ».
+
 ## Design system OneStock
 
 Le code importe les composants depuis l'alias `#ds` (`OsButton`, `OsTabs`, `OsInputText`, `OsSelect`, `OsAlert`…) :

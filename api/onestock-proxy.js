@@ -8,6 +8,7 @@ import { loadRuntimeConfig } from '../lib/settings.js';
  * Credentials come from the Settings API; the OneStock status and body are relayed as is.
  */
 export default async function handler(req, res) {
+  req.startedAt = Date.now();
   if (req.method !== 'POST') return sendJson(res, 405, { error: 'Méthode non autorisée' });
   try {
     const input = readBody(req);
@@ -20,6 +21,6 @@ export default async function handler(req, res) {
     );
     sendJson(res, result.status, result.data);
   } catch (err) {
-    sendError(res, err);
+    sendError(res, err, req);
   }
 }
