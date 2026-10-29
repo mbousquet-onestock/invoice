@@ -18,7 +18,7 @@ async function post<T>(url: string, context: OnestockContext, payload: Record<st
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
     const message = data.error || data.message || data.raw || `Erreur HTTP ${res.status}`;
-    throw Object.assign(new Error(message), { status: res.status, details: data });
+    throw Object.assign(new Error(message), { status: res.status, details: data.details ?? data });
   }
   return data as T;
 }

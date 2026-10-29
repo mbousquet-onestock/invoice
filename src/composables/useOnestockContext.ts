@@ -16,6 +16,8 @@ export interface OnestockContext {
   orderId: string;
   /** Optional ?environment= (qualif, prod…); otherwise deduced server side from api_url. */
   environment: string;
+  /** URL of the OneStock page showing the iframe: identifies the back office and its token. */
+  parentUrl: string;
   parentOrigin: string;
 }
 
@@ -42,6 +44,7 @@ export function useOnestockContext() {
     // Outside of OneStock, ?order_id= (and ?api_url=) can be used to test the page.
     orderId: params.get('order_id') || '',
     environment: params.get('environment') || '',
+    parentUrl: params.get('parent_url') || '',
     parentOrigin: originOf(params.get('parent_url') || ''),
   });
 

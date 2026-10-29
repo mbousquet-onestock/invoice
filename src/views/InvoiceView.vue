@@ -12,6 +12,8 @@ const order = ref<OrderSummary | null>(null);
 const loading = ref(false);
 const sending = ref(false);
 const error = ref('');
+/** Call and response exchanged with the API behind the error (token masked), shown in "Détails". */
+const errorDetails = ref<unknown>(null);
 const sent = ref('');
 
 const to = ref('');
@@ -47,13 +49,17 @@ function show(result: OrderSummary) {
 /** One call to /api/init: settings and order together. */
 async function load() {
   error.value = '';
+  errorDetails.value = null;
   sent.value = '';
   order.value = null;
   loading.value = true;
   try {
     const result = await initApp<OrderSummary>(props.context);
     if (result.order) show(result.order);
-    else if (result.order_error) error.value = result.order_error;
+    else if (result.order_error) {
+      error.value = result.order_error;
+      errorDetails.value = result.order_error_details ?? null;
+    }
   } finally {
     loading.value = false;
   }
@@ -62,6 +68,7 @@ async function load() {
 async function send() {
   if (!order.value) return;
   error.value = '';
+  errorDetails.value = null;
   sent.value = '';
   sending.value = true;
   try {
@@ -75,6 +82,7 @@ async function send() {
     sent.value = `Email envoyé à ${to.value} (${result.files.join(', ')})`;
   } catch (err) {
     error.value = (err as Error).message;
+    errorDetails.value = (err as { details?: unknown }).details ?? null;
   } finally {
     sending.value = false;
   }
@@ -96,8 +104,11 @@ watch(
     <OsAlert
       v-else-if="store.loaded && !configured"
       type="warning"
-      title="onestock_token introuvable"
-      :subtitle="`Le token OneStock doit être fourni au niveau global par l'API Settings (environnement ${store.scope?.environment ?? '?'}).`"
+      title="Token OneStock introuvable"
+      :subtitle="
+        store.settings.onestock_token?.error ||
+        `Le token OneStock doit être fourni par l'API Settings (environnement ${store.scope?.environment ?? '?'}).`
+      "
     />
 
     <OsAlert
@@ -116,7 +127,14 @@ watch(
       title="Première connexion : paramètres initialisés"
       :subtitle="`Créés avec leur valeur par défaut : ${store.created.join(', ')}`"
     />
-    <OsAlert v-if="error" type="danger" title="Erreur" :subtitle="error" />
+    <OsAlert v-if="error" type="danger" title="Erreur" :subtitle="error">
+      <template v-if="errorDetails" #content>
+        <details class="error-details">
+          <summary class="os-body-m">Détails (appel et retour)</summary>
+          <pre class="os-body-s">{{ JSON.stringify(errorDetails, null, 2) }}</pre>
+        </details>
+      </template>
+    </OsAlert>
     <OsAlert v-if="sent" type="success" title="Facture envoyée" :subtitle="sent">
       <template v-if="context.embedded" #actions>
         <OsButton type="secondary" text="Fermer" @click="emit('close')" />
@@ -189,6 +207,11 @@ watch(
   font-family: Roboto, sans-serif;
 }
 .textarea textarea:focus { border-color: #24bdb0; }
+.error-details summary { cursor: pointer; }
+.error-details pre {
+  margin: 8px 0 0; padding: 8px; max-height: 320px; overflow: auto; white-space: pre-wrap; word-break: break-all;
+  background: #fff; color: #333; border: 1px solid #e5e5e5; border-radius: 5px; font-family: ui-monospace, monospace;
+}
 .actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; }
 /* Hidden entry to the settings, just left of "Envoyer": invisible until hovered or focused. */
 .settings-link { opacity: 0; transition: opacity 0.2s; }

@@ -49,8 +49,12 @@ Un setting est identifié par `key` + `site_id` + `extension_id` + `environment`
 - **repli prod → qualif** : en `prod`, une clé sans valeur dans aucun des niveaux ci-dessus est reprise de `qualif`
   (même ordre). Les écritures restent dans l'environnement courant, et la première connexion ne crée pas en `prod`
   une clé qui existe déjà en `qualif` ;
-- `onestock_token` est **fourni par l'API Settings au niveau global** : l'app le lit mais ne le crée ni ne le modifie
-  (l'écran Paramètres indique seulement s'il est présent) ;
+- **token OneStock par `parent_url`** : chaque back-office OneStock a son token. L'app transmet le `parent_url` reçu
+  par l'iframe et lit `GET /api/settings/token?parent_url=…&decrypt=1`, qui renvoie le token et l'`api_root` à
+  appeler (prioritaire sur `onestock_api_root` et sur l'`api_url` du contexte). Sans repli : un 404 signifie qu'aucun
+  token n'a été saisi pour ce back-office (application Extensions → Settings généraux → Token OneStock). L'app ne
+  crée ni ne modifie le token. Sans `parent_url` (test hors OneStock), `onestock_token` est lu comme les autres
+  paramètres ;
 - à l'écriture, `onestock_api_root` est enregistré pour le site et toutes les extensions (`*`), les autres
   pour le site et cette extension. Seuls les champs modifiés sont écrits (`PUT /api/settings/item?upsert=1`) ;
   un secret laissé vide conserve la valeur enregistrée.
@@ -99,6 +103,9 @@ valeurs `enc:v1:`…) étant remplacées par `••••••••`.
 | `Facture` | Téléchargement de la facture en échec |
 | `SMTP` | Connexion (`VERIFY`) ou envoi (`SEND`) en échec, avec hôte, port, mode TLS et utilisateur |
 | `Extension` | Réponse d'erreur d'une route `/api/*` de l'application |
+
+Dans l'écran, une erreur de l'API OneStock affiche aussi un bloc **« Détails (appel et retour) »** : méthode, URL et
+corps envoyés (token masqué), statut et corps de la réponse.
 
 Les erreurs que l'application rattrape (`already_exists` à l'initialisation, `decrypt=1` refusé puis relecture des
 valeurs brutes) sont journalisées en `warn` avec `"handled": true`, les autres en `error`. Les appels à l'API

@@ -6,7 +6,7 @@ import { scopeOf, readOrInitializeSettings, runtimeConfig, publicSettings } from
 /**
  * Everything the screen needs when it opens, in one call:
  * POST /api/init { context: { site_id, extension_id, api_url, environment, lang, order_id } }
- *   → { scope, created, settings (secrets masked), order | null, order_error | null }
+ *   → { scope, created, settings (secrets masked), order | null, order_error | null, order_error_details }
  * Settings are read once (and initialised on the first connection), then the order is loaded with them.
  */
 export default methods({
@@ -33,6 +33,8 @@ export default methods({
       result.order = orderSummary(order, orderId);
     } catch (err) {
       result.order_error = err.message;
+      // Call and response exchanged with OneStock (token masked), shown under the error.
+      result.order_error_details = err.details ?? null;
     }
     return result;
   },

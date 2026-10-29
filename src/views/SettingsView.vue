@@ -43,6 +43,7 @@ watch(
 function origin(key: string) {
   const s = store.settings[key];
   if (!s?.source) return 'Valeur par défaut';
+  if (s.source.parent_url) return `Fourni par l'API Settings pour ${s.source.parent_url}`;
   const site = s.source.site_id ? `site ${s.source.site_id}` : 'tous les sites';
   const extension = s.source.extension_id === '*' ? 'toutes les extensions' : `extension ${s.source.extension_id}`;
   const environment =
@@ -54,8 +55,11 @@ function origin(key: string) {
 
 const tokenText = computed(() => {
   const token = store.settings.onestock_token;
+  if (token?.error) return token.error;
   if (!token?.set) return `Non trouvé dans l'API Settings (niveau global, environnement ${store.scope?.environment ?? '?'})`;
-  return `Fourni par l'API Settings — ${origin('onestock_token').replace('Enregistré pour ', '')}`;
+  return origin('onestock_token').startsWith('Fourni')
+    ? origin('onestock_token')
+    : `Fourni par l'API Settings — ${origin('onestock_token').replace('Enregistré pour ', '')}`;
 });
 
 function secretPlaceholder(key: string) {
@@ -123,6 +127,7 @@ async function checkSmtp() {
         </div>
         <OsInputText
           v-model="form.onestock_api_root"
+          :readonly="store.settings.onestock_api_root?.provided"
           label="Racine de l'API (onestock_api_root)"
           :placeholder="context.apiUrl || 'https://c00.api.qualif.onestock-retail.com'"
           :supporting-text="`${origin('onestock_api_root')} — /v3 ajouté si la version n'est pas précisée`"

@@ -9,7 +9,8 @@ export interface SettingValue {
   general: boolean;
   /** Supplied by the Settings API (global level): read only. */
   provided: boolean;
-  source: { site_id: string; extension_id: string; environment: string } | null;
+  source: { site_id?: string; extension_id?: string; environment?: string; parent_url?: string } | null;
+  error?: string;
 }
 export type SettingsMap = Record<string, SettingValue>;
 export interface SettingsScope {
@@ -35,6 +36,7 @@ export function requestContext(context: OnestockContext) {
     site_id: context.siteId,
     extension_id: context.extensionId,
     api_url: context.apiUrl,
+    parent_url: context.parentUrl,
     environment: context.environment,
     lang: context.lang,
   };
@@ -71,7 +73,9 @@ function applySettings(data: { scope: SettingsScope; settings: SettingsMap; crea
 /**
  * Opening of the screen, in one call: settings (initialised on the first connection) and the order of the context.
  */
-export async function initApp<T>(context: OnestockContext): Promise<{ order: T | null; order_error: string | null }> {
+export async function initApp<T>(
+  context: OnestockContext,
+): Promise<{ order: T | null; order_error: string | null; order_error_details?: unknown }> {
   store.loading = true;
   store.error = '';
   try {
@@ -83,7 +87,7 @@ export async function initApp<T>(context: OnestockContext): Promise<{ order: T |
       }),
     );
     applySettings(data);
-    return { order: data.order, order_error: data.order_error };
+    return { order: data.order, order_error: data.order_error, order_error_details: data.order_error_details };
   } catch (err) {
     store.error = (err as Error).message;
     return { order: null, order_error: null };
