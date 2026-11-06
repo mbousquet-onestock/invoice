@@ -85,6 +85,8 @@ valeur revient encore chiffrée (ou si l'API ne peut pas déchiffrer), elle est 
 | `EXTENSION_ID` | `extension_id` utilisé hors contexte OneStock (défaut `invoice`) |
 | `SETTINGS_ENVIRONMENT` | Environnement par défaut sans `api_url` (défaut `qualif`) |
 | `SETTINGS_CACHE_TTL_MS` | Durée du cache des paramètres en ms (défaut `30000`, `0` = sans cache) |
+| `EXTENSION_URL` | Origine https de production publiée dans le manifeste (défaut : origine du déploiement) |
+| `EXTENSION_TEST_URL` | Origine https utilisée par les environnements OneStock hors production (facultatif) |
 
 Côté application Extensions, `SETTINGS_API_KEYS` et `SETTINGS_ENCRYPTION_KEY` doivent être définies (sinon 503 /
 `encryption_key_missing`). En local, mettre ces variables dans `.env.local` (voir `.env.example`).
@@ -148,6 +150,32 @@ npm run typecheck
 
 La commande et le site ID viennent uniquement du contexte OneStock. Pour tester hors OneStock :
 `http://localhost:5173/?site_id=c00&order_id=ORD000001&extension_id=invoice&environment=qualif`.
+
+## Manifeste OneStock Hub
+
+L'extension publie son manifeste (schéma version 1, cf. `MANIFEST.md` du Hub) à
+`https://<déploiement>/.well-known/onestock-extension.json` (`api/manifest.js`, réécriture dans `vercel.json`, servi
+en `application/json` sans redirection). Un administrateur du catalogue OneStock ajoute l'extension en collant cette
+URL ; le Hub la relit chaque jour.
+
+| Champ | Valeur |
+| --- | --- |
+| `id` | `com.onestock.invoice-email` (définitif) |
+| `name` | `Envoi de facture` (**ne jamais changer** : clés de traduction du Back Office) |
+| `version` | celle de `package.json` : **à augmenter à chaque modification du manifeste** |
+| `category` | `Communication` |
+| `urls.production` / `urls.test` | `EXTENSION_URL` / `EXTENSION_TEST_URL`, sinon l'origine du déploiement |
+| `icon` | `/icon.png` (PNG 256 px) |
+| `install_url`, `settings.url` | `/api/hub` |
+| `requires.onestock_api` | `true` (token OneStock lu dans l'API Settings par `parent_url`) |
+| `injection_points` | `bo.order.action`, slug `send-invoice`, path `/` |
+| `settings` | serveur SMTP et modèle d'email, avec **les mêmes clés que l'API Settings** (`smtp_host`, `smtp_password`…) |
+
+`/api/hub` reçoit les appels du Hub (`installed`, `updated`, `settings_updated`…) : il les journalise
+(`hub_callback`, secrets masqués) et enregistre dans l'API Settings les paramètres reçus en clair, pour le site et
+l'environnement indiqués par l'appel. **Provisoire** : il a été écrit sans `CALLBACKS.md` ; la signature des appels
+n'est pas vérifiée et les champs du corps sont lus de façon défensive. Aucune `callback_encryption_key` n'est
+déclarée : le Hub envoie donc les paramètres en clair dans l'appel signé (avec un avertissement à la validation).
 
 ## Déploiement
 

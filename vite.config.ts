@@ -27,6 +27,8 @@ function vercelApiDev(): Plugin {
     name: 'vercel-api-dev',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
+        // Same rewrite as vercel.json for the extension manifest.
+        if (req.url?.startsWith('/.well-known/onestock-extension.json')) req.url = '/api/manifest';
         const match = req.url?.match(/^\/api\/([\w-]+)\/?(?:\?.*)?$/);
         const file = match && path.join(root, 'api', `${match[1]}.js`);
         if (!file || !fs.existsSync(file)) return next();
