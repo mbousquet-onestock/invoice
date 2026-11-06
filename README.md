@@ -154,8 +154,9 @@ La commande et le site ID viennent uniquement du contexte OneStock. Pour tester 
 ## Manifeste OneStock Hub
 
 L'extension publie son manifeste (schéma version 1, cf. `MANIFEST.md` du Hub) à
-`https://<déploiement>/.well-known/onestock-extension.json` (`api/manifest.js`, réécriture dans `vercel.json`, servi
-en `application/json` sans redirection). Un administrateur du catalogue OneStock ajoute l'extension en collant cette
+`https://<déploiement>/.well-known/onestock-extension.json`, en `application/json` sans redirection : fichier
+statique généré au build (`dist/.well-known/`, origine tirée de `EXTENSION_URL`, sinon du domaine de production
+Vercel `VERCEL_PROJECT_PRODUCTION_URL`), avec en secours la réécriture vers `api/manifest.js` (local, origine inconnue). Un administrateur du catalogue OneStock ajoute l'extension en collant cette
 URL ; le Hub la relit chaque jour.
 
 | Champ | Valeur |

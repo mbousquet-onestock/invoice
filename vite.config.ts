@@ -21,6 +21,31 @@ function designSystemEntry(): string {
   }
 }
 
+/**
+ * Writes the extension manifest as a static file, dist/.well-known/onestock-extension.json: Vercel serves it at
+ * https://<host>/.well-known/onestock-extension.json, before any rewrite. Without a known origin (local build), the
+ * file is not written and the rewrite to /api/manifest serves it.
+ */
+function extensionManifest(): Plugin {
+  return {
+    name: 'onestock-extension-manifest',
+    apply: 'build',
+    async generateBundle() {
+      const { buildManifest, deploymentOrigin, MANIFEST_PATH } = await import('./lib/manifest.js');
+      const origin = deploymentOrigin();
+      if (!origin) {
+        this.warn('EXTENSION_URL / VERCEL_PROJECT_PRODUCTION_URL inconnus : manifeste servi par /api/manifest');
+        return;
+      }
+      this.emitFile({
+        type: 'asset',
+        fileName: MANIFEST_PATH.slice(1),
+        source: `${JSON.stringify(buildManifest(origin), null, 2)}\n`,
+      });
+    },
+  };
+}
+
 /** Serves the Vercel functions of /api during `vite dev`, so no Vercel CLI is needed locally. */
 function vercelApiDev(): Plugin {
   return {
@@ -51,7 +76,7 @@ export default defineConfig(({ mode }) => {
   // Server-side variables (SETTINGS_API_KEY…) from .env / .env.local for the local /api functions.
   for (const [key, value] of Object.entries(loadEnv(mode, root, ''))) process.env[key] ??= value;
   return {
-    plugins: [vue(), vercelApiDev()],
+    plugins: [vue(), vercelApiDev(), extensionManifest()],
     resolve: {
       alias: {
         '#ds': designSystemEntry(),
