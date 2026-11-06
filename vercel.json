@@ -8,38 +8,36 @@
       "maxDuration": 30
     }
   },
-  "headers": [
+  "routes": [
     {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "Content-Security-Policy",
-          "value": "frame-ancestors *"
-        }
-      ]
+      "src": "/",
+      "methods": [
+        "POST"
+      ],
+      "dest": "/api/hub"
     },
     {
-      "source": "/.well-known/onestock-extension.json",
-      "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/json; charset=utf-8"
-        },
-        {
-          "key": "Access-Control-Allow-Origin",
-          "value": "*"
-        },
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=300"
-        }
-      ]
-    }
-  ],
-  "rewrites": [
+      "src": "/.well-known/onestock-extension.json",
+      "headers": {
+        "Content-Type": "application/json; charset=utf-8",
+        "Access-Control-Allow-Origin": "*",
+        "Cache-Control": "public, max-age=300"
+      },
+      "continue": true
+    },
     {
-      "source": "/.well-known/onestock-extension.json",
-      "destination": "/api/manifest"
+      "src": "/(.*)",
+      "headers": {
+        "Content-Security-Policy": "frame-ancestors *"
+      },
+      "continue": true
+    },
+    {
+      "handle": "filesystem"
+    },
+    {
+      "src": "/.well-known/onestock-extension.json",
+      "dest": "/api/manifest"
     }
   ]
 }

@@ -52,8 +52,9 @@ function vercelApiDev(): Plugin {
     name: 'vercel-api-dev',
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
-        // Same rewrite as vercel.json for the extension manifest.
+        // Same routes as vercel.json: extension manifest, and Hub callbacks POSTed to the root.
         if (req.url?.startsWith('/.well-known/onestock-extension.json')) req.url = '/api/manifest';
+        if (req.method === 'POST' && (req.url === '/' || req.url?.startsWith('/?'))) req.url = '/api/hub';
         const match = req.url?.match(/^\/api\/([\w-]+)\/?(?:\?.*)?$/);
         const file = match && path.join(root, 'api', `${match[1]}.js`);
         if (!file || !fs.existsSync(file)) return next();

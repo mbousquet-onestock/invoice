@@ -167,12 +167,12 @@ URL ; le Hub la relit chaque jour.
 | `category` | `Communication` |
 | `urls.production` / `urls.test` | `EXTENSION_URL` / `EXTENSION_TEST_URL`, sinon l'origine du déploiement |
 | `icon` | `/icon.png` (PNG 256 px) |
-| `install_url`, `settings.url` | `/api/hub` |
+| `install_url` | racine du déploiement (`https://<host>`) : les `POST /` sont routés vers `api/hub.js` (`routes` de `vercel.json`) ; pas de `settings.url`, les `settings_updated` arrivent aussi à `install_url` |
 | `requires.onestock_api` | `true` (token OneStock lu dans l'API Settings par `parent_url`) |
 | `injection_points` | `bo.order.action`, nom `Facture`, slug `facture`, path `/`, rank `1` (identiques à OneStock) |
 | `settings` | serveur SMTP et modèle d'email, avec **les mêmes clés que l'API Settings** (`smtp_host`, `smtp_password`…) |
 
-`/api/hub` reçoit les appels du Hub (`installed`, `updated`, `settings_updated`…) : il les journalise
+`POST /` (routé vers `/api/hub`) reçoit les appels du Hub (`installed`, `updated`, `settings_updated`…) : il les journalise
 (`hub_callback`, secrets masqués) et enregistre dans l'API Settings les paramètres reçus en clair, pour le site et
 l'environnement indiqués par l'appel. **Provisoire** : il a été écrit sans `CALLBACKS.md` ; la signature des appels
 n'est pas vérifiée et les champs du corps sont lus de façon défensive. Aucune `callback_encryption_key` n'est
