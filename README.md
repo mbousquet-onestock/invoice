@@ -161,14 +161,14 @@ URL ; le Hub la relit chaque jour.
 | Champ | Valeur |
 | --- | --- |
 | `id` | `com.onestock.invoice-email` (définitif) |
-| `name` | `Envoi de facture` (**ne jamais changer** : clés de traduction du Back Office) |
+| `name` | `Facture`, comme l'extension déjà déclarée dans OneStock (**ne jamais changer** : clés de traduction du Back Office) |
 | `version` | celle de `package.json` : **à augmenter à chaque modification du manifeste** |
 | `category` | `Communication` |
 | `urls.production` / `urls.test` | `EXTENSION_URL` / `EXTENSION_TEST_URL`, sinon l'origine du déploiement |
 | `icon` | `/icon.png` (PNG 256 px) |
 | `install_url`, `settings.url` | `/api/hub` |
 | `requires.onestock_api` | `true` (token OneStock lu dans l'API Settings par `parent_url`) |
-| `injection_points` | `bo.order.action`, slug `send-invoice`, path `/` |
+| `injection_points` | `bo.order.action`, nom `Facture`, slug `facture`, path `/`, rank `1` (identiques à OneStock) |
 | `settings` | serveur SMTP et modèle d'email, avec **les mêmes clés que l'API Settings** (`smtp_host`, `smtp_password`…) |
 
 `/api/hub` reçoit les appels du Hub (`installed`, `updated`, `settings_updated`…) : il les journalise

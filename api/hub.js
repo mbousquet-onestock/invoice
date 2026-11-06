@@ -44,8 +44,9 @@ export default methods({
       return { ok: true, event: event ?? null, saved: [], ...(body.settings_jwe ? { warning: 'settings_jwe non lus' } : {}) };
     }
     const scope = scopeOf({
-      site_id: pick(body, 'site_id', 'installation.site_id', 'instance.site_id') ?? '',
-      extension_id: pick(body, 'extension_id', 'installation.extension_id', 'instance.extension_id'),
+      site_id: pick(body, 'site_id', 'extension.site_id', 'installation.site_id', 'instance.site_id') ?? '',
+      // OneStock extension entity ({ "extension": { "id": … } }): the extension_id the iframe receives.
+      extension_id: pick(body, 'extension_id', 'extension.id', 'installation.extension_id', 'instance.extension_id'),
       environment: pick(body, 'environment', 'installation.environment', 'instance.environment'),
       api_url: pick(body, 'api_url', 'installation.api_url', 'instance.api_url'),
     });
