@@ -10,16 +10,17 @@ export default methods({
   async GET(req) {
     const scope = scopeOf(readQuery(req));
     const { created, settings } = await readOrInitializeSettings(scope, { fresh: true });
-    return { scope: publicScope(scope), created, settings: publicSettings(settings) };
+    return { scope: publicScope(scope, settings), created, settings: publicSettings(settings) };
   },
   async PUT(req) {
     const body = readBody(req);
     const scope = scopeOf(body.context);
     const saved = await writeSettings(scope, body.values);
-    return { scope: publicScope(scope), saved, settings: publicSettings(await readSettings(scope, { fresh: true })) };
+    const settings = await readSettings(scope, { fresh: true });
+    return { scope: publicScope(scope, settings), saved, settings: publicSettings(settings) };
   },
 });
 
-function publicScope({ siteId, extensionId, environment }) {
-  return { siteId, extensionId, environment };
+function publicScope({ siteId, extensionId, environment }, settings) {
+  return { siteId, extensionId, environment, apiOrigin: settings?.onestock_user_id?.api_origin };
 }

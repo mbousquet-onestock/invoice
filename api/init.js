@@ -15,14 +15,19 @@ export default methods({
     const scope = scopeOf(context);
     const { created, settings } = await readOrInitializeSettings(scope, { decrypt: true });
     const result = {
-      scope: { siteId: scope.siteId, extensionId: scope.extensionId, environment: scope.environment },
+      scope: {
+        siteId: scope.siteId,
+        extensionId: scope.extensionId,
+        environment: scope.environment,
+        apiOrigin: settings.onestock_user_id.api_origin,
+      },
       created,
       settings: publicSettings(settings),
       order: null,
       order_error: null,
     };
     const orderId = String(context.order_id || '').trim();
-    if (!orderId || !scope.siteId || !settings.onestock_token.set) return result;
+    if (!orderId || !scope.siteId || !settings.onestock_user_id.set || !settings.onestock_password.set) return result;
     try {
       const order = await getOrder(runtimeConfig(settings, scope), {
         orderId,

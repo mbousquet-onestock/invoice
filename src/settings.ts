@@ -9,7 +9,9 @@ export interface SettingValue {
   general: boolean;
   /** Supplied by the Settings API (global level): read only. */
   provided: boolean;
-  source: { site_id?: string; extension_id?: string; environment?: string; parent_url?: string } | null;
+  source: { site_id?: string; extension_id?: string; environment?: string; api_url?: string } | null;
+  /** Account keys: origin of the OneStock API the account belongs to. */
+  api_origin?: string;
   error?: string;
 }
 export type SettingsMap = Record<string, SettingValue>;
@@ -17,6 +19,8 @@ export interface SettingsScope {
   siteId: string;
   extensionId: string;
   environment: string;
+  /** OneStock API the account (onestock_user_id / onestock_password) belongs to. */
+  apiOrigin?: string;
 }
 
 /** Settings of the current context, read from the Settings API through /api/settings (secrets masked). */
@@ -113,7 +117,7 @@ export function setting(key: string) {
   return store.settings[key]?.value ?? '';
 }
 
-/** OneStock calls need onestock_token, provided globally by the Settings API. */
+/** OneStock calls need the API account of the site (token obtained with POST /login). */
 export function isConfigured() {
-  return Boolean(store.settings.onestock_token?.set);
+  return Boolean(store.settings.onestock_user_id?.set && store.settings.onestock_password?.set);
 }

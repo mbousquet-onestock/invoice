@@ -22,7 +22,7 @@ navigateur (iframe OneStock)             Vercel
 ```
 
 - Le navigateur n'appelle jamais OneStock directement : tous les appels passent par `POST /api/onestock-proxy`
-  `{ method, path, body, site_id, api_url }`. Le proxy ajoute `site_id` et le token, et utilise
+  `{ method, path, body, site_id, api_url }`. Le proxy ajoute `site_id` et le token (obtenu par `POST /login`), et utilise
   `POST` + `X-HTTP-Method-Override: GET` pour les routes GET à body.
 - Les identifiants OneStock et SMTP sont lus par les fonctions dans l'API Settings (voir ci-dessous).
 - À l'ouverture, un seul appel `POST /api/init` lit les paramètres (une fois), les initialise si besoin et charge la
@@ -49,24 +49,24 @@ Un setting est identifié par `key` + `site_id` + `extension_id` + `environment`
 - **repli prod → qualif** : en `prod`, une clé sans valeur dans aucun des niveaux ci-dessus est reprise de `qualif`
   (même ordre). Les écritures restent dans l'environnement courant, et la première connexion ne crée pas en `prod`
   une clé qui existe déjà en `qualif` ;
-- **token OneStock par `parent_url`** : chaque back-office OneStock a son token. L'app transmet le `parent_url` reçu
-  par l'iframe et lit `GET /api/settings/token?parent_url=…&decrypt=1`, qui renvoie le token et l'`api_root` à
-  appeler (prioritaire sur `onestock_api_root` et sur l'`api_url` du contexte). Sans repli : un 404 signifie qu'aucun
-  token n'a été saisi pour ce back-office (application Extensions → Settings généraux → Token OneStock). L'app ne
-  crée ni ne modifie le token. Sans `parent_url` (test hors OneStock), `onestock_token` est lu comme les autres
-  paramètres ;
+- **token OneStock par `POST {url}/login`** : le token est obtenu avec le compte API du site,
+  `{ "password", "site_id", "user_id" }`, sur la même URL que les autres appels (`…/v3/login`). Il est gardé en
+  mémoire de l'instance (par URL, site et compte) et redemandé une fois sur un 401. Le compte (`onestock_user_id`,
+  `onestock_password`) est un paramètre : **un compte par `site_id` et URL d'API**, enregistré avec `site_id` = le
+  site, `extension_id` = `*` et `environment` = l'origine de l'URL de l'API (`onestock_api_root`, sinon l'`api_url`
+  du contexte, ex. `https://c00.api.qualif.onestock-retail.com`). Il est saisi dans l'écran Paramètres, jamais créé
+  automatiquement ;
 - à l'écriture, `onestock_api_root` est enregistré pour le site et toutes les extensions (`*`), les autres
   pour le site et cette extension. Seuls les champs modifiés sont écrits (`PUT /api/settings/item?upsert=1`) ;
   un secret laissé vide conserve la valeur enregistrée.
 
 **Première connexion** : à l'ouverture, les clés qui n'existent à aucun niveau sont créées (`POST /api/settings`)
 avec leur valeur par défaut, `onestock_api_root` prenant l'URL d'API reçue du contexte. Les secrets
-(`smtp_password`) et `onestock_token` (fourni par l'API) ne sont pas créés : l'app signale si `onestock_token` est
-introuvable.
+(`smtp_password`) et le compte API OneStock ne sont pas créés : l'app signale si le compte du site est à saisir.
 
 | Clé | Niveau | Rôle |
 | --- | --- | --- |
-| `onestock_token` 🔒 | global (lecture seule) | Token de l'API OneStock, fourni par l'API Settings |
+| `onestock_user_id`, `onestock_password` 🔒 | site, `*`, environnement = origine de l'URL d'API | Compte de l'API OneStock (token via `POST /login`) |
 | `onestock_api_root` | site, `*` | Racine de l'API OneStock (sinon URL du contexte) ; `/v3` ajouté si aucune version n'est précisée |
 | `smtp_host`, `smtp_port`, `smtp_secure`, `smtp_user`, `smtp_password` 🔒, `smtp_from`, `smtp_bcc` | site, extension | Serveur d'envoi |
 | `email_subject`, `email_body` | site, extension | Modèle d'email (`{{order_id}}`, `{{first_name}}`, `{{last_name}}`, `{{email}}`) |
@@ -168,7 +168,7 @@ URL ; le Hub la relit chaque jour.
 | `urls.production` / `urls.test` | `EXTENSION_URL` / `EXTENSION_TEST_URL`, sinon l'origine du déploiement |
 | `icon` | `/icon.png` (PNG 256 px) |
 | `install_url` | racine du déploiement (`https://<host>`) : les `POST /` sont routés vers `api/hub.js` (`routes` de `vercel.json`) ; pas de `settings.url`, les `settings_updated` arrivent aussi à `install_url` |
-| `requires.onestock_api` | `true` (token OneStock lu dans l'API Settings par `parent_url`) |
+| `requires.onestock_api` | `true` (compte API OneStock du site, token via `POST /login`) |
 | `injection_points` | `bo.order.action`, nom `Facture`, slug `facture`, path `/`, rank `1` (identiques à OneStock) |
 | `settings` | serveur SMTP et modèle d'email, avec **les mêmes clés que l'API Settings** (`smtp_host`, `smtp_password`…) |
 

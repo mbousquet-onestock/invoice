@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
-import { OsAlert, OsBadge, OsButton, OsCardLayout, OsCheckbox, OsDivider, OsInputText, OsTextBlock } from '#ds';
+import { OsAlert, OsBadge, OsButton, OsCardLayout, OsCheckbox, OsDivider, OsInputText } from '#ds';
 import type { OnestockContext } from '../composables/useOnestockContext';
 import { store, loadSettings, saveSettings } from '../settings';
 import { testSmtp } from '../api';
@@ -43,7 +43,7 @@ watch(
 function origin(key: string) {
   const s = store.settings[key];
   if (!s?.source) return 'Valeur par défaut';
-  if (s.source.parent_url) return `Fourni par l'API Settings pour ${s.source.parent_url}`;
+  if (s.source.api_url) return `Enregistré pour le site ${s.source.site_id}, API ${s.source.api_url}`;
   const site = s.source.site_id ? `site ${s.source.site_id}` : 'tous les sites';
   const extension = s.source.extension_id === '*' ? 'toutes les extensions' : `extension ${s.source.extension_id}`;
   const environment =
@@ -53,14 +53,9 @@ function origin(key: string) {
   return `Enregistré pour ${site}, ${extension}${environment}`;
 }
 
-const tokenText = computed(() => {
-  const token = store.settings.onestock_token;
-  if (token?.error) return token.error;
-  if (!token?.set) return `Non trouvé dans l'API Settings (niveau global, environnement ${store.scope?.environment ?? '?'})`;
-  return origin('onestock_token').startsWith('Fourni')
-    ? origin('onestock_token')
-    : `Fourni par l'API Settings — ${origin('onestock_token').replace('Enregistré pour ', '')}`;
-});
+const accountLabel = computed(
+  () => `site ${store.scope?.siteId || '?'} — ${store.settings.onestock_user_id?.api_origin || store.scope?.apiOrigin || '?'}`,
+);
 
 function secretPlaceholder(key: string) {
   return store.settings[key]?.set ? '•••••••• (enregistré, laisser vide pour conserver)' : '';
@@ -115,22 +110,30 @@ async function checkSmtp() {
       <div class="group">
         <div class="os-label-l">API OneStock</div>
         <span class="os-body-s hint">
-          Le token est fourni au niveau global par l'API Settings ; la racine de l'API est commune à toutes les
-          extensions du {{ siteLabel }} (extension_id « * »).
+          Compte de l'API OneStock du {{ accountLabel }} : le token est obtenu avec POST /login. Un compte par site et
+          par URL d'API.
         </span>
-        <div class="provided">
-          <OsTextBlock primary-text="Token (onestock_token)" :tertiary-text="tokenText" />
-          <OsBadge
-            :text="store.settings.onestock_token?.set ? 'Fourni' : 'Absent'"
-            :color="store.settings.onestock_token?.set ? 'green' : 'red'"
+        <div class="row">
+          <OsInputText
+            v-model="form.onestock_user_id"
+            label="Identifiant (user_id)"
+            autocomplete="off"
+            :supporting-text="origin('onestock_user_id')"
+          />
+          <OsInputText
+            v-model="form.onestock_password"
+            label="Mot de passe"
+            type="password"
+            autocomplete="new-password"
+            :placeholder="secretPlaceholder('onestock_password')"
+            :supporting-text="origin('onestock_password')"
           />
         </div>
         <OsInputText
           v-model="form.onestock_api_root"
-          :readonly="store.settings.onestock_api_root?.provided"
           label="Racine de l'API (onestock_api_root)"
           :placeholder="context.apiUrl || 'https://c00.api.qualif.onestock-retail.com'"
-          :supporting-text="`${origin('onestock_api_root')} — /v3 ajouté si la version n'est pas précisée`"
+          :supporting-text="`${origin('onestock_api_root')} — commune aux extensions du ${siteLabel} ; /v3 ajouté si la version n'est pas précisée`"
         />
 
         <OsDivider />
@@ -209,7 +212,6 @@ async function checkSmtp() {
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
 .row > :deep(*) { min-width: 200px; }
 .hint { color: #7f7f7f; }
-.provided { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
 .textarea { display: flex; flex-direction: column; gap: 2px; color: #4c4c4c; }
 .textarea textarea {
   resize: vertical; padding: 8px 12px; border: 1px solid #e5e5e5; border-radius: 5px; color: #333; outline: none;

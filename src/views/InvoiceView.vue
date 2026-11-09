@@ -104,10 +104,10 @@ watch(
     <OsAlert
       v-else-if="store.loaded && !configured"
       type="warning"
-      title="Token OneStock introuvable"
+      title="Compte API OneStock non renseigné"
       :subtitle="
-        store.settings.onestock_token?.error ||
-        `Le token OneStock doit être fourni par l'API Settings (environnement ${store.scope?.environment ?? '?'}).`
+        store.settings.onestock_password?.error ||
+        `Identifiant et mot de passe de l'API pour le site ${store.scope?.siteId ?? '?'} (${store.settings.onestock_user_id?.api_origin ?? '?'}) : à saisir via le bouton masqué à gauche de « Envoyer la facture ».`
       "
     />
 
