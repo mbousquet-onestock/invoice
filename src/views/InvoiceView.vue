@@ -128,10 +128,10 @@ watch(
     <OsAlert
       v-else-if="store.loaded && !configured"
       type="warning"
-      title="Compte API OneStock non renseigné"
+      title="Compte API OneStock introuvable"
       :subtitle="
         store.settings.onestock_password?.error ||
-        `Identifiant et mot de passe de l'API pour le site ${store.scope?.siteId ?? '?'} (${store.scope?.apiOrigin ?? '?'}) : à saisir via le bouton masqué à gauche de « Envoyer la facture ».`
+        `Identifiants de l'API OneStock à renseigner dans l'app Extensions (API Settings) — cherché : ${store.settings.onestock_user_id?.lookup ?? '?'}. En secours : bouton masqué à gauche de « Envoyer la facture ».`
       "
     />
 

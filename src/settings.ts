@@ -13,6 +13,8 @@ export interface SettingValue {
   /** Account keys (entered at install by the Hub): origin of the OneStock API the account belongs to. */
   account?: boolean;
   api_origin?: string;
+  /** Account keys: where they are looked for in the Settings API. */
+  lookup?: string;
   error?: string;
 }
 export type SettingsMap = Record<string, SettingValue>;

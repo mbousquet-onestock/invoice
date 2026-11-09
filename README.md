@@ -47,14 +47,16 @@ au site, à l'extension et à l'URL de l'API OneStock du contexte** :
 - `environment` = **l'origine de l'`api_url` du contexte** (ex. `https://api-qualif.onestock-retail.com`), à défaut
   l'URL construite depuis le site (`https://{site}.api.qualif.onestock-retail.com`). Deux URL d'API différentes ont
   donc chacune leurs valeurs ;
-- à la lecture, pour cette URL d'API, la priorité est : ce site + cette extension → ce site + `*` → tous les sites
-  (`site_id` vide puis `*`) + cette extension → tous les sites + `*` → valeur par défaut ;
+- à la lecture, la priorité est, d'abord pour `environment` = l'URL d'API puis pour `environment` = le nom
+  d'environnement (`qualif`, `prod`…, convention de l'application Extensions) : ce site + cette extension → ce site +
+  `*` → tous les sites (`site_id` vide puis `*`) + cette extension → tous les sites + `*` → valeur par défaut ;
 - **token OneStock par `POST {url}/login`** : le token est obtenu avec le compte API du site,
   `{ "password", "site_id", "user_id" }`, sur la même URL que les autres appels (`…/v3/login`). Il est gardé en
   mémoire de l'instance (par URL, site et compte) et redemandé une fois sur un 401. Le compte (`onestock_user_id`,
-  `onestock_password`) est **propre au site** (jamais repris de « tous les sites ») et partagé par les extensions
-  (`extension_id` = `*`). Il est demandé à l'installation par le Hub et saisissable dans l'écran Paramètres ; il
-  n'est jamais créé automatiquement ;
+  `onestock_password`) **vient de l'API Settings** (saisi dans l'application Extensions, par exemple `site_id` =
+  `p0039`, `extension_id` = `*`, `environment` = `qualif`), selon la priorité ci-dessus. L'écran Paramètres de l'app
+  et l'installation par le Hub ne servent qu'en secours ; il n'est jamais créé automatiquement. S'il est introuvable,
+  le message indique où il a été cherché ;
 - à l'écriture, `onestock_api_root` et le compte sont enregistrés pour le site et toutes les extensions (`*`), les
   autres pour le site et cette extension, toujours pour l'URL d'API du contexte. Seuls les champs modifiés sont écrits
   (`PUT /api/settings/item?upsert=1`) ; un secret laissé vide conserve la valeur enregistrée.
@@ -65,7 +67,7 @@ avec leur valeur par défaut, `onestock_api_root` prenant l'URL d'API reçue du 
 
 | Clé (toutes : `environment` = origine de l'URL d'API) | Niveau | Rôle |
 | --- | --- | --- |
-| `onestock_user_id`, `onestock_password` 🔒 | site (strict), `*` | Compte de l'API OneStock (token via `POST /login`) |
+| `onestock_user_id`, `onestock_password` 🔒 | site, `*` (lus aussi sous `environment` = `qualif` / `prod`) | Compte de l'API OneStock (token via `POST /login`) |
 | `onestock_api_root` | site, `*` | Racine de l'API OneStock (sinon URL du contexte) ; `/v3` ajouté si aucune version n'est précisée |
 | `smtp_host`, `smtp_port`, `smtp_secure`, `smtp_user`, `smtp_password` 🔒, `smtp_from`, `smtp_bcc` | site, extension | Serveur d'envoi |
 | `email_subject`, `email_body` | site, extension | Modèle d'email (`{{order_id}}`, `{{first_name}}`, `{{last_name}}`, `{{email}}`) |

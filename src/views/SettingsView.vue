@@ -109,8 +109,8 @@ async function checkSmtp() {
       <div class="group">
         <div class="os-label-l">API OneStock</div>
         <span class="os-body-s hint">
-          Compte de l'API OneStock du {{ accountLabel }} : le token est obtenu avec POST /login. Un compte par site et
-          par URL d'API (aussi demandé à l'installation de l'extension).
+          Compte de l'API OneStock du {{ accountLabel }} (token obtenu avec POST /login). Il est lu dans l'API Settings
+          (app Extensions) ; ces champs ne servent qu'en secours.
         </span>
         <div class="row">
           <OsInputText
