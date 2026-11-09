@@ -1,6 +1,6 @@
 {
   "name": "onestock-invoice-extension",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "description": "Extension UI OneStock : récupère la facture d'une commande et l'envoie par email au client",
   "type": "module",
