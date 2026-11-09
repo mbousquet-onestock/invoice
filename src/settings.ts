@@ -19,8 +19,9 @@ export type SettingsMap = Record<string, SettingValue>;
 export interface SettingsScope {
   siteId: string;
   extensionId: string;
+  /** Environment name (qualif, prod…), for display. */
   environment: string;
-  /** OneStock API the account (onestock_user_id / onestock_password) belongs to. */
+  /** OneStock API URL (origin) the settings of this site are linked to. */
   apiOrigin?: string;
 }
 
@@ -31,7 +32,7 @@ export const store = reactive({
   error: '',
   /** Keys created with their default value on the first connection. */
   created: [] as string[],
-  /** Keys copied from the values entered at install (Hub) for this site / environment. */
+  /** Keys copied from the values entered at install (Hub) for this site / API URL. */
   fromInstall: [] as string[],
   scope: null as SettingsScope | null,
   settings: {} as SettingsMap,

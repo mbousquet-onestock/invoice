@@ -40,36 +40,32 @@ Tous les paramètres de fonctionnement sont stockés dans l'**API Settings** de 
 (`https://extensions-lemon.vercel.app/api/settings`, base Postgres Vercel). Cette API n'est appelée que par les
 fonctions Vercel : la clé d'API et les secrets déchiffrés n'atteignent jamais le navigateur.
 
-Un setting est identifié par `key` + `site_id` + `extension_id` + `environment` :
+Un setting est identifié par `key` + `site_id` + `extension_id` + `environment`. **Les paramètres de l'app sont liés
+au site, à l'extension et à l'URL de l'API OneStock du contexte** :
 
-- `site_id` et `extension_id` viennent du contexte OneStock ; `environment` est déduit de `api_url`
-  (`*.api.qualif.onestock-retail.com` ou `api-qualif.onestock-retail.com` → `qualif`, sinon `prod`), ou forcé par
-  `?environment=` ;
-- à la lecture, la priorité est : ce site + cette extension → ce site + `*` → tous les sites (`site_id` vide puis
-  `*`) + cette extension → tous les sites + `*` → valeur par défaut ;
-- **repli prod → qualif** : en `prod`, une clé sans valeur dans aucun des niveaux ci-dessus est reprise de `qualif`
-  (même ordre). Les écritures restent dans l'environnement courant, et la première connexion ne crée pas en `prod`
-  une clé qui existe déjà en `qualif` ;
+- `site_id` et `extension_id` viennent du contexte OneStock (saisis dans l'écran s'il ne fournit pas le site) ;
+- `environment` = **l'origine de l'`api_url` du contexte** (ex. `https://api-qualif.onestock-retail.com`), à défaut
+  l'URL construite depuis le site (`https://{site}.api.qualif.onestock-retail.com`). Deux URL d'API différentes ont
+  donc chacune leurs valeurs ;
+- à la lecture, pour cette URL d'API, la priorité est : ce site + cette extension → ce site + `*` → tous les sites
+  (`site_id` vide puis `*`) + cette extension → tous les sites + `*` → valeur par défaut ;
 - **token OneStock par `POST {url}/login`** : le token est obtenu avec le compte API du site,
   `{ "password", "site_id", "user_id" }`, sur la même URL que les autres appels (`…/v3/login`). Il est gardé en
   mémoire de l'instance (par URL, site et compte) et redemandé une fois sur un 401. Le compte (`onestock_user_id`,
-  `onestock_password`) est un paramètre : **un compte par `site_id` et URL d'API**, enregistré avec `site_id` = le
-  site, `extension_id` = `*` et `environment` = l'origine de l'URL de l'API (`onestock_api_root`, sinon l'`api_url`
-  du contexte, ex. `https://c00.api.qualif.onestock-retail.com`). Il est **demandé à l'installation par le Hub**
-  (champs `onestock_user_id` et `onestock_password` du manifeste) et modifiable depuis la page de l'installation ;
-  il est aussi saisissable dans l'écran Paramètres, le Hub n'envoyant pas toujours d'appel à l'installation. Il n'est
-  jamais créé automatiquement ;
-- à l'écriture, `onestock_api_root` est enregistré pour le site et toutes les extensions (`*`), les autres
-  pour le site et cette extension. Seuls les champs modifiés sont écrits (`PUT /api/settings/item?upsert=1`) ;
-  un secret laissé vide conserve la valeur enregistrée.
+  `onestock_password`) est **propre au site** (jamais repris de « tous les sites ») et partagé par les extensions
+  (`extension_id` = `*`). Il est demandé à l'installation par le Hub et saisissable dans l'écran Paramètres ; il
+  n'est jamais créé automatiquement ;
+- à l'écriture, `onestock_api_root` et le compte sont enregistrés pour le site et toutes les extensions (`*`), les
+  autres pour le site et cette extension, toujours pour l'URL d'API du contexte. Seuls les champs modifiés sont écrits
+  (`PUT /api/settings/item?upsert=1`) ; un secret laissé vide conserve la valeur enregistrée.
 
 **Première connexion** : à l'ouverture, les clés qui n'existent à aucun niveau sont créées (`POST /api/settings`)
 avec leur valeur par défaut, `onestock_api_root` prenant l'URL d'API reçue du contexte. Les secrets
 (`smtp_password`) et le compte API OneStock ne sont pas créés : l'app signale si le compte du site est à saisir.
 
-| Clé | Niveau | Rôle |
+| Clé (toutes : `environment` = origine de l'URL d'API) | Niveau | Rôle |
 | --- | --- | --- |
-| `onestock_user_id`, `onestock_password` 🔒 | site, `*`, environnement = origine de l'URL d'API | Compte de l'API OneStock (token via `POST /login`) |
+| `onestock_user_id`, `onestock_password` 🔒 | site (strict), `*` | Compte de l'API OneStock (token via `POST /login`) |
 | `onestock_api_root` | site, `*` | Racine de l'API OneStock (sinon URL du contexte) ; `/v3` ajouté si aucune version n'est précisée |
 | `smtp_host`, `smtp_port`, `smtp_secure`, `smtp_user`, `smtp_password` 🔒, `smtp_from`, `smtp_bcc` | site, extension | Serveur d'envoi |
 | `email_subject`, `email_body` | site, extension | Modèle d'email (`{{order_id}}`, `{{first_name}}`, `{{last_name}}`, `{{email}}`) |

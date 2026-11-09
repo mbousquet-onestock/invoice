@@ -43,18 +43,13 @@ watch(
 function origin(key: string) {
   const s = store.settings[key];
   if (!s?.source) return 'Valeur par défaut';
-  if (s.source.api_url) return `Enregistré pour le site ${s.source.site_id}, API ${s.source.api_url}`;
-  const site = s.source.site_id ? `site ${s.source.site_id}` : 'tous les sites';
+  const site = s.source.site_id && s.source.site_id !== '*' ? `site ${s.source.site_id}` : 'tous les sites';
   const extension = s.source.extension_id === '*' ? 'toutes les extensions' : `extension ${s.source.extension_id}`;
-  const environment =
-    s.source.environment && s.source.environment !== store.scope?.environment
-      ? ` (repris de ${s.source.environment})`
-      : '';
-  return `Enregistré pour ${site}, ${extension}${environment}`;
+  return `Enregistré pour ${site}, ${extension}, API ${s.source.environment}`;
 }
 
 const accountLabel = computed(
-  () => `site ${store.scope?.siteId || '?'} — ${store.settings.onestock_user_id?.api_origin || store.scope?.apiOrigin || '?'}`,
+  () => `site ${store.scope?.siteId || '?'} — ${store.scope?.apiOrigin || '?'}`,
 );
 
 function secretPlaceholder(key: string) {
@@ -100,7 +95,11 @@ async function checkSmtp() {
   <section class="settings">
     <div class="head">
       <h1 class="os-title-m title">Paramètres</h1>
-      <OsBadge v-if="store.scope" :text="`Environnement : ${store.scope.environment}`" color="grey" />
+      <OsBadge
+        v-if="store.scope"
+        :text="`Site ${store.scope.siteId || '?'} — ${store.scope.apiOrigin || store.scope.environment}`"
+        color="grey"
+      />
     </div>
 
     <OsAlert v-if="store.error" type="danger" title="API Settings" :subtitle="store.error" />

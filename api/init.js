@@ -18,8 +18,8 @@ export default methods({
       scope: {
         siteId: scope.siteId,
         extensionId: scope.extensionId,
-        environment: scope.environment,
-        apiOrigin: settings.onestock_user_id.api_origin,
+        environment: scope.envName,
+        apiOrigin: scope.apiOrigin,
       },
       created,
       from_install: fromInstall,

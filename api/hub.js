@@ -8,7 +8,7 @@ import { INSTALL_SETTINGS } from '../lib/manifest.js';
  *
  * PROVISIONAL — written without CALLBACKS.md: the signature is not verified (unknown format) and the payload
  * fields are read defensively. Every callback is logged (masked); settings received in clear are saved in the
- * Settings API under the same keys, for the site / environment found in the callback (all sites otherwise).
+ * Settings API under the same keys, for the site / API URL found in the callback, else for the installation.
  * Encrypted settings (settings_jwe) are not readable: no callback_encryption_key is declared.
  * Answers 2xx, except when received settings cannot be saved: the Hub then shows the error to the installer and
  * undoes the installation (or does not save the change), as described in MANIFEST.md.
@@ -51,10 +51,10 @@ export default methods({
       environment: pick(body, 'environment', 'installation.environment', 'instance.environment'),
       api_url: pick(body, 'api_url', 'api_root', 'installation.api_url', 'instance.api_url', 'context.api_url'),
     });
-    const summary = { siteId: scope.siteId, extensionId: scope.extensionId, environment: scope.environment };
+    const summary = { siteId: scope.siteId, extensionId: scope.extensionId, apiUrl: scope.apiOrigin };
     if (!scope.siteId) {
-      // Site and environment come from the context of the iframe: the values are kept for the installation and
-      // copied for each site / environment the first time the extension opens there.
+      // Site and API URL come from the context of the iframe: the values are kept for the installation and
+      // copied for each site / API URL the first time the extension opens there.
       const saved = await saveInstallValues(scope.extensionId, values);
       return { ok: true, event: event ?? null, saved, saved_for: 'installation', scope: summary };
     }

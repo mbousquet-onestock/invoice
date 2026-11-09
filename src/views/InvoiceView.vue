@@ -131,7 +131,7 @@ watch(
       title="Compte API OneStock non renseigné"
       :subtitle="
         store.settings.onestock_password?.error ||
-        `Identifiant et mot de passe de l'API pour le site ${store.scope?.siteId ?? '?'} (${store.settings.onestock_user_id?.api_origin ?? '?'}) : à saisir via le bouton masqué à gauche de « Envoyer la facture ».`
+        `Identifiant et mot de passe de l'API pour le site ${store.scope?.siteId ?? '?'} (${store.scope?.apiOrigin ?? '?'}) : à saisir via le bouton masqué à gauche de « Envoyer la facture ».`
       "
     />
 
@@ -184,7 +184,7 @@ watch(
       v-if="store.fromInstall.length"
       type="info"
       title="Paramètres de l'installation repris"
-      :subtitle="`Repris pour le site ${store.scope?.siteId} (${store.scope?.environment}) : ${store.fromInstall.join(', ')}`"
+      :subtitle="`Repris pour le site ${store.scope?.siteId} (${store.scope?.apiOrigin}) : ${store.fromInstall.join(', ')}`"
     />
     <OsAlert
       v-if="store.created.length"
