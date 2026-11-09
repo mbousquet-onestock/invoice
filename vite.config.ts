@@ -61,7 +61,14 @@ function vercelApiDev(): Plugin {
         let raw = '';
         for await (const chunk of req) raw += chunk;
         try {
-          (req as typeof req & { body: unknown }).body = raw ? JSON.parse(raw) : {};
+          // Like Vercel: JSON bodies are parsed, other bodies (e.g. a signed JWS token) stay as text.
+          let body: unknown = raw;
+          try {
+            body = raw ? JSON.parse(raw) : {};
+          } catch {
+            /* not JSON */
+          }
+          (req as typeof req & { body: unknown }).body = body;
           const mod = await import(`${pathToFileURL(file).href}?t=${Date.now()}`);
           await mod.default(req, res);
         } catch (err) {

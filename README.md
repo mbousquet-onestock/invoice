@@ -175,13 +175,18 @@ URL ; le Hub la relit chaque jour.
 | `injection_points` | `bo.order.action`, nom `Facture`, slug `facture`, path `/`, rank `1` (identiques à OneStock) |
 | `settings` | compte API OneStock (`onestock_user_id`, `onestock_password`, obligatoires), serveur SMTP et modèle d'email, avec **les mêmes clés que l'API Settings** |
 
-`POST /` (routé vers `/api/hub`) reçoit les appels du Hub (`installed`, `updated`, `settings_updated`…) et les
-journalise (`hub_callback`, secrets masqués). Le site et l'URL de l'API **viennent du contexte de l'iframe**, que le Hub
-ne connaît pas : les valeurs saisies à l'installation sont donc gardées pour l'installation (API Settings,
-`site_id` vide, `extension_id` de l'appel, `environment` = `hub-install`), puis **recopiées pour le site et
-l'environnement du contexte à la première ouverture de l'extension** (avant les valeurs par défaut, sans écraser une
-valeur déjà présente ; le compte API est rangé pour le site et son URL d'API). Si l'appel du Hub contient un
-`site_id`, les valeurs sont enregistrées directement pour ce site. Signature des appels non vérifiée.
+`POST /` (routé vers `/api/hub`) reçoit les appels du Hub (`installed`, `updated`, `settings_updated`…). Le corps
+est lu quel que soit son format : JSON, jeton signé JWS (`header.payload.signature`, non vérifié), ou JSON
+enveloppant un jeton / `payload` / `data` ; les paramètres peuvent être un objet `{ clé: valeur }` ou une liste
+`[{ key, value }]`. Le site et l'URL de l'API **viennent du contexte de l'iframe**, que le Hub ne connaît pas : les
+valeurs sont gardées pour l'installation (API Settings, `site_id` vide, `environment` = `hub-install`,
+`extension_id` = celui de l'appel, sinon `com.onestock.invoice-email`), puis **recopiées pour le site, l'extension et
+l'URL d'API du contexte à la première ouverture** (avant les valeurs par défaut, sans écraser l'existant). Si l'appel
+contient un `site_id`, elles sont enregistrées directement pour ce site.
+
+**Diagnostic** : `GET /api/hub` indique ce que contenait le dernier appel du Hub (date, événement, type de contenu,
+noms des champs et des paramètres reçus, paramètres enregistrés, avertissement éventuel), sans aucune valeur. Chaque
+appel est aussi journalisé (`hub_callback`, secrets masqués).
 
 ## Déploiement
 
