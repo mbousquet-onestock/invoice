@@ -187,6 +187,12 @@ appel est aussi journalisé (`hub_callback`, secrets masqués).
 
 ## Déploiement
 
+La branche par défaut du dépôt (`claude/epic-bardeen-tx0dqz`) est déployée en production sur
+`https://invoice-seven-nu.vercel.app`. Après un « Instant Rollback » ou un « Promote » manuel dans Vercel, les
+nouveaux commits ne sont plus mis en production automatiquement : annuler le rollback (« Undo Rollback ») ou promouvoir
+le dernier déploiement. Pour vérifier la version servie : `/.well-known/onestock-extension.json` (`version`) et
+`/api/hub`.
+
 Importer le dépôt dans Vercel (framework Vite, sortie `dist/`, fonctions `api/`) ou `vercel deploy`.
 Communiquer ensuite l'URL Vercel à votre contact OneStock pour déclarer l'extension avec un anchor `bo.order.action`
 (path `/`), et définir `SETTINGS_API_KEY` dans les variables d'environnement du projet. `vercel.json` autorise l'affichage en iframe (`frame-ancestors *`).
