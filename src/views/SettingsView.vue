@@ -9,18 +9,14 @@ const props = defineProps<{ context: OnestockContext }>();
 const emit = defineEmits<{ back: [] }>();
 
 const form = reactive<Record<string, string>>({});
-const initial = ref<Record<string, string>>({});
 const message = ref<{ type: 'success' | 'danger'; text: string } | null>(null);
 const saving = ref(false);
 const testing = ref(false);
 
-const siteLabel = computed(() => (store.scope?.siteId ? `site ${store.scope.siteId}` : 'tous les sites'));
-const extensionId = computed(() => store.scope?.extensionId || props.context.extensionId);
 
 function fill() {
   const values = Object.fromEntries(Object.entries(store.settings).map(([key, s]) => [key, s.value]));
   Object.assign(form, values);
-  initial.value = values;
 }
 watch(() => store.settings, fill, { immediate: true });
 if (!store.loaded && props.context.ready) loadSettings(props.context);
@@ -52,23 +48,26 @@ const accountLabel = computed(
   () => `site ${store.scope?.siteId || '?'} — ${store.scope?.apiOrigin || '?'}`,
 );
 
+/** Key of the context the page is saved for: site, API URL, extension. */
+const contextLabel = computed(
+  () => `site ${store.scope?.siteId || '?'} — ${store.scope?.apiOrigin || '?'} — extension ${store.scope?.extensionId || '?'}`,
+);
+
 function secretPlaceholder(key: string) {
   return store.settings[key]?.set ? '•••••••• (enregistré, laisser vide pour conserver)' : '';
 }
 
-const changes = computed(() =>
-  Object.fromEntries(Object.entries(form).filter(([key, value]) => value !== initial.value[key])),
+/** All the values of the page (the context keys are added by the server); an empty password keeps the stored one. */
+const pageValues = computed(() =>
+  Object.fromEntries(Object.entries(form).filter(([key]) => !key.startsWith('context_'))),
 );
 
 async function save() {
   saving.value = true;
   message.value = null;
   try {
-    const saved = await saveSettings(props.context, changes.value);
-    message.value = {
-      type: 'success',
-      text: saved.length ? `${saved.length} paramètre(s) enregistré(s).` : 'Aucune modification à enregistrer.',
-    };
+    const saved = await saveSettings(props.context, pageValues.value);
+    message.value = { type: 'success', text: `${saved.length} paramètre(s) enregistré(s) pour ${contextLabel.value}.` };
   } catch (err) {
     message.value = { type: 'danger', text: (err as Error).message };
   } finally {
@@ -80,7 +79,7 @@ async function checkSmtp() {
   testing.value = true;
   message.value = null;
   try {
-    if (Object.keys(changes.value).length) await saveSettings(props.context, changes.value);
+    await saveSettings(props.context, pageValues.value);
     await testSmtp(props.context);
     message.value = { type: 'success', text: 'Connexion SMTP réussie.' };
   } catch (err) {
@@ -95,12 +94,14 @@ async function checkSmtp() {
   <section class="settings">
     <div class="head">
       <h1 class="os-title-m title">Paramètres</h1>
-      <OsBadge
-        v-if="store.scope"
-        :text="`Site ${store.scope.siteId || '?'} — ${store.scope.apiOrigin || store.scope.environment}`"
-        color="grey"
-      />
+      <OsBadge v-if="store.scope" :text="`Environnement : ${store.scope.environment}`" color="grey" />
     </div>
+    <OsAlert
+      v-if="store.scope"
+      type="info"
+      title="Contexte"
+      :subtitle="`Les données de cette page sont enregistrées pour le ${contextLabel} : ce sont celles utilisées par l'app.`"
+    />
 
     <OsAlert v-if="store.error" type="danger" title="API Settings" :subtitle="store.error" />
     <OsAlert v-else-if="store.loading && !store.loaded" type="neutral" subtitle="Chargement des paramètres…" />
@@ -109,8 +110,7 @@ async function checkSmtp() {
       <div class="group">
         <div class="os-label-l">API OneStock</div>
         <span class="os-body-s hint">
-          Compte de l'API OneStock du {{ accountLabel }} (token obtenu avec POST /login). Il est lu dans l'API Settings
-          (app Extensions) ; ces champs ne servent qu'en secours.
+          Compte de l'API OneStock du {{ accountLabel }} (token obtenu avec POST /login).
         </span>
         <div class="row">
           <OsInputText
@@ -133,14 +133,11 @@ async function checkSmtp() {
           v-model="form.onestock_api_root"
           label="Racine de l'API (onestock_api_root)"
           :placeholder="context.apiUrl || 'https://c00.api.qualif.onestock-retail.com'"
-          :supporting-text="`${origin('onestock_api_root')} — commune aux extensions du ${siteLabel} ; /v3 ajouté si la version n'est pas précisée`"
+          :supporting-text="`${origin('onestock_api_root')} — /v3 ajouté si la version n'est pas précisée`"
         />
 
         <OsDivider />
 
-        <span class="os-body-s hint">
-          Paramètres suivants propres à l'extension {{ extensionId }}, enregistrés pour le {{ siteLabel }}.
-        </span>
         <div class="os-label-l">Serveur SMTP</div>
         <div class="row">
           <OsInputText v-model="form.smtp_host" label="Hôte" placeholder="smtp.example.com" :supporting-text="origin('smtp_host')" />
