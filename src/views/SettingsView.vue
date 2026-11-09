@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, reactive, ref, watch } from 'vue';
-import { OsAlert, OsBadge, OsButton, OsCardLayout, OsCheckbox, OsDivider, OsInputText } from '#ds';
+import { OsAlert, OsBadge, OsButton, OsCardLayout, OsCheckbox, OsDivider, OsInputText, OsTextBlock } from '#ds';
 import type { OnestockContext } from '../composables/useOnestockContext';
 import { store, loadSettings, saveSettings } from '../settings';
 import { testSmtp } from '../api';
@@ -61,8 +61,11 @@ function secretPlaceholder(key: string) {
   return store.settings[key]?.set ? '•••••••• (enregistré, laisser vide pour conserver)' : '';
 }
 
+// The API account is entered at install (Hub), never from this screen.
 const changes = computed(() =>
-  Object.fromEntries(Object.entries(form).filter(([key, value]) => value !== initial.value[key])),
+  Object.fromEntries(
+    Object.entries(form).filter(([key, value]) => value !== initial.value[key] && !store.settings[key]?.account),
+  ),
 );
 
 async function save() {
@@ -110,23 +113,19 @@ async function checkSmtp() {
       <div class="group">
         <div class="os-label-l">API OneStock</div>
         <span class="os-body-s hint">
-          Compte de l'API OneStock du {{ accountLabel }} : le token est obtenu avec POST /login. Un compte par site et
-          par URL d'API.
+          Compte de l'API OneStock du {{ accountLabel }} (token obtenu avec POST /login). Saisi à l'installation de
+          l'extension (OneStock Hub) et modifiable depuis la page de l'installation.
         </span>
-        <div class="row">
-          <OsInputText
-            v-model="form.onestock_user_id"
-            label="Identifiant (user_id)"
-            autocomplete="off"
-            :supporting-text="origin('onestock_user_id')"
+        <div class="account">
+          <OsTextBlock
+            primary-text="Identifiant (user_id)"
+            :secondary-text="store.settings.onestock_user_id?.value || 'Non renseigné'"
+            :tertiary-text="origin('onestock_user_id')"
           />
-          <OsInputText
-            v-model="form.onestock_password"
-            label="Mot de passe"
-            type="password"
-            autocomplete="new-password"
-            :placeholder="secretPlaceholder('onestock_password')"
-            :supporting-text="origin('onestock_password')"
+          <OsTextBlock primary-text="Mot de passe" :tertiary-text="store.settings.onestock_password?.error || origin('onestock_password')" />
+          <OsBadge
+            :text="store.settings.onestock_user_id?.set && store.settings.onestock_password?.set ? 'Renseigné' : 'Absent'"
+            :color="store.settings.onestock_user_id?.set && store.settings.onestock_password?.set ? 'green' : 'red'"
           />
         </div>
         <OsInputText
@@ -212,6 +211,7 @@ async function checkSmtp() {
 .row { display: flex; gap: 8px; flex-wrap: wrap; }
 .row > :deep(*) { min-width: 200px; }
 .hint { color: #7f7f7f; }
+.account { display: grid; grid-template-columns: 1fr 1fr auto; gap: 8px; align-items: start; }
 .textarea { display: flex; flex-direction: column; gap: 2px; color: #4c4c4c; }
 .textarea textarea {
   resize: vertical; padding: 8px 12px; border: 1px solid #e5e5e5; border-radius: 5px; color: #333; outline: none;

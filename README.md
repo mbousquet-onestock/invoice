@@ -55,8 +55,9 @@ Un setting est identifié par `key` + `site_id` + `extension_id` + `environment`
   `onestock_password`) est un paramètre : **un compte par `site_id` et URL d'API**, enregistré avec `site_id` = le
   site, `extension_id` = `*` et `environment` = l'origine de l'URL de l'API (`onestock_api_root`, sinon l'`api_url`
   du contexte, ex. `https://c00.api.qualif.onestock-retail.com`). Il est **demandé à l'installation par le Hub**
-  (champs `onestock_user_id` et `onestock_password` du manifeste), reste modifiable dans l'écran Paramètres et n'est
-  jamais créé automatiquement ;
+  (champs `onestock_user_id` et `onestock_password` du manifeste) et modifiable depuis la page de l'installation ;
+  l'écran Paramètres l'affiche en lecture seule (et `PUT /api/settings` l'ignore). Il n'est jamais créé
+  automatiquement ;
 - à l'écriture, `onestock_api_root` est enregistré pour le site et toutes les extensions (`*`), les autres
   pour le site et cette extension. Seuls les champs modifiés sont écrits (`PUT /api/settings/item?upsert=1`) ;
   un secret laissé vide conserve la valeur enregistrée.

@@ -15,7 +15,8 @@ export default methods({
   async PUT(req) {
     const body = readBody(req);
     const scope = scopeOf(body.context);
-    const saved = await writeSettings(scope, body.values);
+    // The OneStock API account is entered at install (Hub callbacks), not from the settings screen.
+    const saved = await writeSettings(scope, body.values, { account: false });
     const settings = await readSettings(scope, { fresh: true });
     return { scope: publicScope(scope, settings), saved, settings: publicSettings(settings) };
   },

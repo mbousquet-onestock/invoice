@@ -10,7 +10,8 @@ export interface SettingValue {
   /** Supplied by the Settings API (global level): read only. */
   provided: boolean;
   source: { site_id?: string; extension_id?: string; environment?: string; api_url?: string } | null;
-  /** Account keys: origin of the OneStock API the account belongs to. */
+  /** Account keys (entered at install by the Hub): origin of the OneStock API the account belongs to. */
+  account?: boolean;
   api_origin?: string;
   error?: string;
 }
