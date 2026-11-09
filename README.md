@@ -43,7 +43,8 @@ fonctions Vercel : la clé d'API et les secrets déchiffrés n'atteignent jamais
 Un setting est identifié par `key` + `site_id` + `extension_id` + `environment` :
 
 - `site_id` et `extension_id` viennent du contexte OneStock ; `environment` est déduit de `api_url`
-  (`*.api.qualif.onestock-retail.com` → `qualif`, sinon `prod`), ou forcé par `?environment=` ;
+  (`*.api.qualif.onestock-retail.com` ou `api-qualif.onestock-retail.com` → `qualif`, sinon `prod`), ou forcé par
+  `?environment=` ;
 - à la lecture, la priorité est : ce site + cette extension → ce site + `*` → tous les sites (`site_id` vide puis
   `*`) + cette extension → tous les sites + `*` → valeur par défaut ;
 - **repli prod → qualif** : en `prod`, une clé sans valeur dans aucun des niveaux ci-dessus est reprise de `qualif`
@@ -56,8 +57,8 @@ Un setting est identifié par `key` + `site_id` + `extension_id` + `environment`
   site, `extension_id` = `*` et `environment` = l'origine de l'URL de l'API (`onestock_api_root`, sinon l'`api_url`
   du contexte, ex. `https://c00.api.qualif.onestock-retail.com`). Il est **demandé à l'installation par le Hub**
   (champs `onestock_user_id` et `onestock_password` du manifeste) et modifiable depuis la page de l'installation ;
-  l'écran Paramètres l'affiche en lecture seule (et `PUT /api/settings` l'ignore). Il n'est jamais créé
-  automatiquement ;
+  il est aussi saisissable dans l'écran Paramètres, le Hub n'envoyant pas toujours d'appel à l'installation. Il n'est
+  jamais créé automatiquement ;
 - à l'écriture, `onestock_api_root` est enregistré pour le site et toutes les extensions (`*`), les autres
   pour le site et cette extension. Seuls les champs modifiés sont écrits (`PUT /api/settings/item?upsert=1`) ;
   un secret laissé vide conserve la valeur enregistrée.
