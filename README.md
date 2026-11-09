@@ -54,8 +54,9 @@ Un setting est identifié par `key` + `site_id` + `extension_id` + `environment`
   mémoire de l'instance (par URL, site et compte) et redemandé une fois sur un 401. Le compte (`onestock_user_id`,
   `onestock_password`) est un paramètre : **un compte par `site_id` et URL d'API**, enregistré avec `site_id` = le
   site, `extension_id` = `*` et `environment` = l'origine de l'URL de l'API (`onestock_api_root`, sinon l'`api_url`
-  du contexte, ex. `https://c00.api.qualif.onestock-retail.com`). Il est saisi dans l'écran Paramètres, jamais créé
-  automatiquement ;
+  du contexte, ex. `https://c00.api.qualif.onestock-retail.com`). Il est **demandé à l'installation par le Hub**
+  (champs `onestock_user_id` et `onestock_password` du manifeste), reste modifiable dans l'écran Paramètres et n'est
+  jamais créé automatiquement ;
 - à l'écriture, `onestock_api_root` est enregistré pour le site et toutes les extensions (`*`), les autres
   pour le site et cette extension. Seuls les champs modifiés sont écrits (`PUT /api/settings/item?upsert=1`) ;
   un secret laissé vide conserve la valeur enregistrée.
@@ -170,11 +171,13 @@ URL ; le Hub la relit chaque jour.
 | `install_url` | racine du déploiement (`https://<host>`) : les `POST /` sont routés vers `api/hub.js` (`routes` de `vercel.json`) ; pas de `settings.url`, les `settings_updated` arrivent aussi à `install_url` |
 | `requires.onestock_api` | `true` (compte API OneStock du site, token via `POST /login`) |
 | `injection_points` | `bo.order.action`, nom `Facture`, slug `facture`, path `/`, rank `1` (identiques à OneStock) |
-| `settings` | serveur SMTP et modèle d'email, avec **les mêmes clés que l'API Settings** (`smtp_host`, `smtp_password`…) |
+| `settings` | compte API OneStock (`onestock_user_id`, `onestock_password`, obligatoires), serveur SMTP et modèle d'email, avec **les mêmes clés que l'API Settings** |
 
 `POST /` (routé vers `/api/hub`) reçoit les appels du Hub (`installed`, `updated`, `settings_updated`…) : il les journalise
 (`hub_callback`, secrets masqués) et enregistre dans l'API Settings les paramètres reçus en clair, pour le site et
-l'environnement indiqués par l'appel. **Provisoire** : il a été écrit sans `CALLBACKS.md` ; la signature des appels
+l'environnement indiqués par l'appel ; le compte API OneStock est rangé pour le `site_id` et l'URL d'API (`api_url`)
+de l'appel. Si l'appel ne contient pas de `site_id`, le compte n'est pas enregistré (avertissement `warning` dans la
+réponse et les logs), le reste l'est et l'installation n'est pas annulée. **Provisoire** : il a été écrit sans `CALLBACKS.md` ; la signature des appels
 n'est pas vérifiée et les champs du corps sont lus de façon défensive. Aucune `callback_encryption_key` n'est
 déclarée : le Hub envoie donc les paramètres en clair dans l'appel signé (avec un avertissement à la validation).
 
