@@ -31,6 +31,8 @@ export const store = reactive({
   error: '',
   /** Keys created with their default value on the first connection. */
   created: [] as string[],
+  /** Keys copied from the values entered at install (Hub) for this site / environment. */
+  fromInstall: [] as string[],
   scope: null as SettingsScope | null,
   settings: {} as SettingsMap,
 });
@@ -68,10 +70,11 @@ export async function loadSettings(context: OnestockContext) {
   }
 }
 
-function applySettings(data: { scope: SettingsScope; settings: SettingsMap; created?: string[] }) {
+function applySettings(data: { scope: SettingsScope; settings: SettingsMap; created?: string[]; from_install?: string[] }) {
   store.scope = data.scope;
   store.settings = data.settings;
   store.created = data.created || [];
+  store.fromInstall = data.from_install || [];
   store.loaded = true;
 }
 

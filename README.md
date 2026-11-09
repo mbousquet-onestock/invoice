@@ -151,7 +151,9 @@ npm test           # tests unitaires (commande, proxy, API Settings)
 npm run typecheck
 ```
 
-La commande et le site ID viennent uniquement du contexte OneStock. Pour tester hors OneStock :
+La commande, le site ID et l'URL de l'API viennent du contexte OneStock. **S'il ne fournit pas le site ou l'URL de
+l'API**, l'écran propose de les saisir (mémorisés dans le navigateur, modifiables avec « Modifier »). Pour tester hors
+OneStock :
 `http://localhost:5173/?site_id=c00&order_id=ORD000001&extension_id=invoice&environment=qualif`.
 
 ## Manifeste OneStock Hub
@@ -173,16 +175,15 @@ URL ; le Hub la relit chaque jour.
 | `install_url` | racine du déploiement (`https://<host>`) : les `POST /` sont routés vers `api/hub.js` (`routes` de `vercel.json`) ; pas de `settings.url`, les `settings_updated` arrivent aussi à `install_url` |
 | `requires.onestock_api` | `true` (compte API OneStock du site, token via `POST /login`) |
 | `injection_points` | `bo.order.action`, nom `Facture`, slug `facture`, path `/`, rank `1` (identiques à OneStock) |
-| `settings` | **instance** (`site_id`, `api_url`, obligatoires : où enregistrer les valeurs), compte API OneStock (`onestock_user_id`, `onestock_password`, obligatoires), serveur SMTP et modèle d'email, avec **les mêmes clés que l'API Settings** |
+| `settings` | compte API OneStock (`onestock_user_id`, `onestock_password`, obligatoires), serveur SMTP et modèle d'email, avec **les mêmes clés que l'API Settings** |
 
-`POST /` (routé vers `/api/hub`) reçoit les appels du Hub (`installed`, `updated`, `settings_updated`…) : il les journalise
-(`hub_callback`, secrets masqués) et enregistre dans l'API Settings les paramètres reçus en clair, pour le site et
-l'environnement **saisis à l'installation** (champs `site_id` et `api_url` du manifeste ; l'environnement est déduit de
-l'hôte de `api_url` : `api-qualif…` → `qualif`, sinon `prod`), à défaut ceux de l'appel. L'`api_url` saisie est
-aussi enregistrée comme `onestock_api_root` du site, et le compte API OneStock est rangé pour ce site et cette URL. Si l'appel ne contient pas de `site_id`, le compte n'est pas enregistré (avertissement `warning` dans la
-réponse et les logs), le reste l'est et l'installation n'est pas annulée. **Provisoire** : il a été écrit sans `CALLBACKS.md` ; la signature des appels
-n'est pas vérifiée et les champs du corps sont lus de façon défensive. Aucune `callback_encryption_key` n'est
-déclarée : le Hub envoie donc les paramètres en clair dans l'appel signé (avec un avertissement à la validation).
+`POST /` (routé vers `/api/hub`) reçoit les appels du Hub (`installed`, `updated`, `settings_updated`…) et les
+journalise (`hub_callback`, secrets masqués). Le site et l'URL de l'API **viennent du contexte de l'iframe**, que le Hub
+ne connaît pas : les valeurs saisies à l'installation sont donc gardées pour l'installation (API Settings,
+`site_id` vide, `extension_id` de l'appel, `environment` = `hub-install`), puis **recopiées pour le site et
+l'environnement du contexte à la première ouverture de l'extension** (avant les valeurs par défaut, sans écraser une
+valeur déjà présente ; le compte API est rangé pour le site et son URL d'API). Si l'appel du Hub contient un
+`site_id`, les valeurs sont enregistrées directement pour ce site. Signature des appels non vérifiée.
 
 ## Déploiement
 

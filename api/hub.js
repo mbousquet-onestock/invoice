@@ -1,7 +1,7 @@
 import { methods, readBody } from '../lib/http.js';
 import { mask } from '../lib/log.js';
-import { scopeOf, writeSettings, SETTING_KEYS } from '../lib/settings.js';
-import { INSTALL_SETTINGS, SCOPE_FIELDS } from '../lib/manifest.js';
+import { scopeOf, writeSettings, saveInstallValues, SETTING_KEYS } from '../lib/settings.js';
+import { INSTALL_SETTINGS } from '../lib/manifest.js';
 
 /**
  * install_url of the manifest: callbacks of the OneStock Hub (installed, updated, settings_updated…).
@@ -44,33 +44,22 @@ export default methods({
     if (!Object.keys(values).length) {
       return { ok: true, event: event ?? null, saved: [], ...(body.settings_jwe ? { warning: 'settings_jwe non lus' } : {}) };
     }
-    // Site and environment entered at install (manifest fields site_id / api_url) come first, then the callback.
     const scope = scopeOf({
-      site_id: pick(settings, 'site_id') ?? pick(body, 'site_id', 'extension.site_id', 'installation.site_id', 'instance.site_id', 'context.site_id') ?? '',
+      site_id: pick(body, 'site_id', 'extension.site_id', 'installation.site_id', 'instance.site_id', 'context.site_id') ?? '',
       // OneStock extension entity ({ "extension": { "id": … } }): the extension_id the iframe receives.
       extension_id: pick(body, 'extension_id', 'extension.id', 'installation.extension_id', 'instance.extension_id'),
       environment: pick(body, 'environment', 'installation.environment', 'instance.environment'),
-      api_url: pick(settings, 'api_url') ?? pick(body, 'api_url', 'api_root', 'installation.api_url', 'instance.api_url', 'context.api_url'),
+      api_url: pick(body, 'api_url', 'api_root', 'installation.api_url', 'instance.api_url', 'context.api_url'),
     });
-    // The API account (onestock_user_id / onestock_password) belongs to a site and an API URL: without a site in
-    // the callback it cannot be filed. The other settings are still saved and the installation is not undone.
-    const account = Object.keys(values).filter((key) => SETTING_KEYS[key]?.account);
-    let warning;
-    if (account.length && !scope.siteId) {
-      for (const key of account) delete values[key];
-      warning = `Compte API OneStock non enregistré : site_id absent de l'appel du Hub (${account.join(', ')})`;
-      console.warn(JSON.stringify({ type: 'hub_callback', level: 'warn', event: event ?? null, warning }));
+    const summary = { siteId: scope.siteId, extensionId: scope.extensionId, environment: scope.environment };
+    if (!scope.siteId) {
+      // Site and environment come from the context of the iframe: the values are kept for the installation and
+      // copied for each site / environment the first time the extension opens there.
+      const saved = await saveInstallValues(scope.extensionId, values);
+      return { ok: true, event: event ?? null, saved, saved_for: 'installation', scope: summary };
     }
-    // The API URL entered at install is the API of this site: the account and the calls use it.
-    if (settings.api_url && SCOPE_FIELDS.includes('api_url')) values.onestock_api_root = String(settings.api_url);
     const saved = await writeSettings(scope, values);
-    return {
-      ok: true,
-      event: event ?? null,
-      saved,
-      ...(warning ? { warning } : {}),
-      scope: { siteId: scope.siteId, extensionId: scope.extensionId, environment: scope.environment },
-    };
+    return { ok: true, event: event ?? null, saved, saved_for: 'site', scope: summary };
   },
   // Lets the Hub (or a person) check that the endpoint is reachable.
   GET: async () => ({ ok: true }),

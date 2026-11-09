@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { OsAlert, OsBadge, OsButton, OsCardLayout, OsCheckbox, OsDivider, OsInputText, OsTextBlock } from '#ds';
-import type { OnestockContext } from '../composables/useOnestockContext';
+import { saveManualContext, type OnestockContext } from '../composables/useOnestockContext';
 import { renderTemplate, sendInvoice, type OrderSummary } from '../api';
 import { store, initApp, isConfigured, setting } from '../settings';
 
@@ -88,11 +88,35 @@ async function send() {
   }
 }
 
+/** site_id / api_url missing from the context: entered here (remembered in this browser). */
+const missingContext = computed(() => props.context.ready && (!props.context.siteId || !props.context.apiUrl));
+const manualSite = ref(props.context.siteId);
+const manualApiUrl = ref(props.context.apiUrl);
+// Only what is entered is checked: an API URL given by the context is used as is.
+const apiUrlEditable = computed(() => !props.context.apiUrl || props.context.manual.apiUrl);
+const manualApiUrlError = computed(() =>
+  apiUrlEditable.value && manualApiUrl.value && !/^https:\/\/[^\s/]+\/?$/.test(manualApiUrl.value.trim())
+    ? 'URL https sans chemin, ex. https://api-qualif.onestock-retail.com'
+    : '',
+);
+const editingContext = ref(false);
+
+function saveContext() {
+  saveManualContext(props.context, {
+    ...(!props.context.siteId || props.context.manual.siteId ? { siteId: manualSite.value } : {}),
+    ...(!props.context.apiUrl || props.context.manual.apiUrl ? { apiUrl: manualApiUrl.value } : {}),
+  });
+  editingContext.value = false;
+}
+
 // In the back office the context arrives with the handshake, after the first render.
 watch(
-  () => [props.context.ready, props.context.orderId, props.context.siteId, props.context.extensionId] as const,
+  () =>
+    [props.context.ready, props.context.orderId, props.context.siteId, props.context.apiUrl, props.context.extensionId] as const,
   ([ready]) => {
-    if (ready) load();
+    manualSite.value = props.context.siteId;
+    manualApiUrl.value = props.context.apiUrl;
+    if (ready && !missingContext.value) load();
   },
   { immediate: true },
 );
@@ -117,10 +141,51 @@ watch(
       title="Aucune commande dans le contexte"
       subtitle="Ouvrez l'extension depuis le détail d'une commande OneStock."
     />
-    <OsAlert v-else-if="context.ready && !siteId" type="warning" title="Site ID manquant dans le contexte" />
+    <OsCardLayout v-if="missingContext || editingContext">
+      <form class="context-form" @submit.prevent="saveContext">
+        <div class="os-label-l">Contexte OneStock</div>
+        <span class="os-body-s hint">
+          {{ missingContext ? "Le contexte OneStock ne fournit pas le site ou l'URL de l'API : saisissez-les." : '' }}
+          Mémorisés dans ce navigateur.
+        </span>
+        <div class="row">
+          <OsInputText
+            v-model="manualSite"
+            label="Site ID"
+            placeholder="p0039"
+            :readonly="!!context.siteId && !context.manual.siteId"
+          />
+          <OsInputText
+            v-model="manualApiUrl"
+            label="URL de l'API OneStock"
+            placeholder="https://api-qualif.onestock-retail.com"
+            :error="manualApiUrlError"
+            :readonly="!apiUrlEditable"
+          />
+        </div>
+        <div class="actions-inline">
+          <OsButton
+            text="Valider"
+            :disabled="!manualSite.trim() || !manualApiUrl.trim() || !!manualApiUrlError"
+            @click="saveContext"
+          />
+        </div>
+      </form>
+    </OsCardLayout>
+    <span v-else-if="context.manual.siteId || context.manual.apiUrl" class="os-body-s hint manual-context">
+      Site {{ context.siteId }} — {{ context.apiUrl }}
+      ({{ context.manual.siteId && context.manual.apiUrl ? 'saisis' : context.manual.siteId ? 'site saisi' : 'URL saisie' }} dans ce navigateur)
+      <OsButton type="tertiary" text="Modifier" @click="editingContext = true" />
+    </span>
     <OsAlert v-if="!context.ready" type="neutral" subtitle="Chargement du contexte OneStock…" />
     <OsAlert v-else-if="loading" type="neutral" :subtitle="`Chargement de la commande ${context.orderId}…`" />
 
+    <OsAlert
+      v-if="store.fromInstall.length"
+      type="info"
+      title="Paramètres de l'installation repris"
+      :subtitle="`Repris pour le site ${store.scope?.siteId} (${store.scope?.environment}) : ${store.fromInstall.join(', ')}`"
+    />
     <OsAlert
       v-if="store.created.length"
       type="info"
@@ -207,6 +272,12 @@ watch(
   font-family: Roboto, sans-serif;
 }
 .textarea textarea:focus { border-color: #24bdb0; }
+.context-form { display: flex; flex-direction: column; gap: 8px; }
+.context-form .row { display: flex; gap: 8px; flex-wrap: wrap; }
+.context-form .row > :deep(*) { min-width: 200px; }
+.actions-inline { display: flex; justify-content: flex-end; }
+.hint { color: #7f7f7f; }
+.manual-context { display: flex; align-items: center; gap: 8px; }
 .error-details summary { cursor: pointer; }
 .error-details pre {
   margin: 8px 0 0; padding: 8px; max-height: 320px; overflow: auto; white-space: pre-wrap; word-break: break-all;

@@ -19,6 +19,51 @@ export interface OnestockContext {
   /** URL of the OneStock page showing the iframe: identifies the back office and its token. */
   parentUrl: string;
   parentOrigin: string;
+  /** site_id / api_url entered in the screen because the context did not give them. */
+  manual: { siteId: boolean; apiUrl: boolean };
+}
+
+const MANUAL_KEY = 'onestock-invoice-context';
+
+function readManual(): { site_id?: string; api_url?: string } {
+  try {
+    return JSON.parse(localStorage.getItem(MANUAL_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+/** Completes the context with the site / API URL entered earlier in this browser, for what the context lacks. */
+function completeFromManual(context: OnestockContext) {
+  const manual = readManual();
+  if (!context.siteId && manual.site_id) {
+    context.siteId = manual.site_id;
+    context.manual.siteId = true;
+  }
+  if (!context.apiUrl && manual.api_url) {
+    context.apiUrl = manual.api_url;
+    context.manual.apiUrl = true;
+  }
+}
+
+/** Site / API URL entered in the screen when the context does not give them; remembered in this browser. */
+export function saveManualContext(context: OnestockContext, values: { siteId?: string; apiUrl?: string }) {
+  const manual = readManual();
+  if (values.siteId !== undefined) {
+    manual.site_id = values.siteId.trim();
+    context.siteId = manual.site_id;
+    context.manual.siteId = true;
+  }
+  if (values.apiUrl !== undefined) {
+    manual.api_url = values.apiUrl.trim().replace(/\/+$/, '');
+    context.apiUrl = manual.api_url;
+    context.manual.apiUrl = true;
+  }
+  try {
+    localStorage.setItem(MANUAL_KEY, JSON.stringify(manual));
+  } catch {
+    /* storage blocked: kept for this session only */
+  }
 }
 
 function originOf(url: string): string {
@@ -46,7 +91,9 @@ export function useOnestockContext() {
     environment: params.get('environment') || '',
     parentUrl: params.get('parent_url') || '',
     parentOrigin: originOf(params.get('parent_url') || ''),
+    manual: { siteId: false, apiUrl: false },
   });
+  if (!embedded) completeFromManual(context);
 
   function post(message: Record<string, unknown>) {
     if (embedded) window.parent.postMessage(message, context.parentOrigin);
@@ -61,6 +108,7 @@ export function useOnestockContext() {
     context.userId = data.user_id || context.userId;
     context.extensionId = data.extension_id || context.extensionId;
     context.orderId = data.order_id || (data.order_ids || '').split(',')[0] || context.orderId;
+    completeFromManual(context);
     context.ready = true;
   }
 

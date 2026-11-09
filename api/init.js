@@ -13,7 +13,7 @@ export default methods({
   async POST(req) {
     const context = readBody(req).context || {};
     const scope = scopeOf(context);
-    const { created, settings } = await readOrInitializeSettings(scope, { decrypt: true });
+    const { created, from_install: fromInstall, settings } = await readOrInitializeSettings(scope, { decrypt: true });
     const result = {
       scope: {
         siteId: scope.siteId,
@@ -22,6 +22,7 @@ export default methods({
         apiOrigin: settings.onestock_user_id.api_origin,
       },
       created,
+      from_install: fromInstall,
       settings: publicSettings(settings),
       order: null,
       order_error: null,

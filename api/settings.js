@@ -9,8 +9,8 @@ import { scopeOf, readSettings, readOrInitializeSettings, writeSettings, publicS
 export default methods({
   async GET(req) {
     const scope = scopeOf(readQuery(req));
-    const { created, settings } = await readOrInitializeSettings(scope, { fresh: true });
-    return { scope: publicScope(scope, settings), created, settings: publicSettings(settings) };
+    const { created, from_install: fromInstall, settings } = await readOrInitializeSettings(scope, { fresh: true });
+    return { scope: publicScope(scope, settings), created, from_install: fromInstall, settings: publicSettings(settings) };
   },
   async PUT(req) {
     const body = readBody(req);
